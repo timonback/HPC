@@ -1,12 +1,19 @@
-all: map
+all: map pointer
 	
-pointer: map.o
+map: map.o
 	gcc -o map map.o
 	
-pointer.o: map.c
+map.o: map.c
 	gcc -c map.c
+	
+pointer: pointer.o
+	gcc -o pointer pointer.o
+	
+pointer.o: pointer.c
+	gcc -c pointer.c
 
 clean:
 	rm -f map
+	rm -f pointer
 	rm -f *.o
 	rm -f *~
