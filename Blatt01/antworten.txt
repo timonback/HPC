@@ -1,0 +1,20 @@
+Aufgabe 1:
+
+2.
+Warum gibt es keine Manual-Page zum Kommando cd?
+
+cd ist kein Programm (keine Binary), sondern ein Befehl in der Bash-Umgebung,
+somit ist seine Funktionalität nur in der Kommandozeile und nicht,
+wie z.B. mkdir, als eigenständiges Programm für andere Software verfügbar.
+
+3.
+Was fällt Ihnen auf?
+
+Die gepackte Datei hat eine Größe von 260K, wohingegen der Ordner laut ls -ldh
+nur eine Größe von 3 hat. Somit listet ls -ldh nur die Größe des Verzeichnisses
+ohne Berücksichtigung des Inhalts auf.
+
+Ist es möglich, ein gepacktes Archiv (.tar.gz) mit einem Aufruf von tar zu
+erzeugen? Wie hätte dieser Aufruf lauten müssen?
+
+$ tar -czf testarchiv.tar.gz testarchiv
