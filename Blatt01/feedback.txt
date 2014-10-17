@@ -1,0 +1,17 @@
+Aufgabe 1:
+	- verständlich, keine Probleme und gut für den Einstieg
+
+Aufgabe 2:
+	Zu 2.1:	- unklar, ob man an switch weiter festhalten muss
+		- Abgabe anstatt der "normalen" Aufgabe (map.c) oder als
+		  zusätzliche Datei (map2.c)
+
+Aufgabe 3:
+	- sehr lehrreich und verständlich, auch für die, die vorher noch
+	  nichts bzw. wenig über Pointer wussten
+
+Aufgabe 4:
+	- Erstellen der Makefile war sehr einfach
+	- Makefile, welche über die Mailingliste versandt wurde, ist sehr
+	  hilfreich für die korrekte Abgabe der Lösungen (Empfehlung/Wunsch:
+	  Die Makefile in den Materialien für das erste Aufgabenblatt mitliefern.)
