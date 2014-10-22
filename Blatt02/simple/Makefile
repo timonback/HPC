@@ -1,5 +1,5 @@
 simple: simple.c Makefile
-	gcc -ggdb -Wall simple.c -o simple
+	gcc -O0 -ggdb -Wall simple.c -o simple
 
 clean:
 	rm simple
