@@ -1,0 +1,8 @@
+partdiff-seq.c: Zeile 230:
+ Beim Zugriff auf die Matrix waren die Zugriffe vertauscht. Somit gab es Zugriffe außerhalb des definierten Arraybereichs.
+ 
+partdiff-seq.c: Zeile 96:
+ Es wurde für M nicht genug Speicher reserviert. Muss (N + 1) sein.
+ 
+partdiff-seq.c: Zeile 165:
+ Der Speicher der Matrix wird falsch freigegeben. Erst die Matrixeinträge freigeben und dann den 'Matrixcontainer'

@@ -93,7 +93,7 @@ allocateMatrices (void)
       errorQuit ();
     }				/* quit if error   */
 
-  M = malloc (sizeof (double) * (N + 1) * (N - 1) * 2);	/* allocate memory */
+  M = malloc (sizeof (double) * (N + 1) * (N + 1) * 2);	/* allocate memory */
   if (M == 0)
     {
       errorQuit ();
@@ -162,11 +162,11 @@ initMatrices (void)
 void
 freeMatrices (void)
 {
-  free (Matrix);
   if (Matrix[1] != 0)
     free (Matrix[1]);
   if (Matrix[0] != 0)
     free (Matrix[0]);
+  free (Matrix);
 }
 
 
@@ -227,7 +227,7 @@ calculate (void)
 	  for (i = 1; i < N; i++)	/* over all rows  */
 	    {
 	      star = -Matrix[m2][i - 1][j]
-		- Matrix[j - 1][m2][i] + 4 * Matrix[m2][i][j] -
+		- Matrix[m2][i][j - 1] + 4 * Matrix[m2][i][j] -
 		Matrix[m2][i][j + 1] - Matrix[m2][i + 1][j];
 
 	      residuum = getResiduum (i, j);
@@ -310,7 +310,7 @@ main (int argC, char **argV)
   initMatrices ();		/* ******************************************* */
 
   start_time = time (NULL);	/*  start timer         */
-  calculate ();			/*  solve the equation  */
+  //calculate ();			/*  solve the equation  */
   comp_time = time (NULL);	/*  stop timer          */
 
   displayStatistics ();		/* **************** */

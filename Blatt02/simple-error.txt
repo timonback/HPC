@@ -1,69 +1,23 @@
-Führen Sie folgende kleinere Tests durch, um gdb kennen zu lernen:
-GDB:
+Die Zeilennummer nehmen Referenz auf die Originaldatei.
+Passende Kommentare sind auch in der neuen simple.c Datei zu finden.
 
-C:\Prog\git\HPC\Blatt02\simple>C:\Extra\Mingw\bin\gdb.exe simple.exe
-GNU gdb (GDB) 7.6.1
-Copyright (C) 2013 Free Software Foundation, Inc.
-License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
-and "show warranty" for details.
-This GDB was configured as "mingw32".
-For bug reporting instructions, please see:
-<http://www.gnu.org/software/gdb/bugs/>...
-Reading symbols from C:\Prog\git\HPC\Blatt02\simple\simple.exe...done.
-(gdb) b 10
-Breakpoint 1 at 0x401346: file simple.c, line 10.
-(gdb) run
-Starting program: C:\Prog\git\HPC\Blatt02\simple/simple.exe
-[New Thread 6128.0x1a24]
-
-Breakpoint 1, mistake1 () at simple.c:12
-12        int buf[] = { 1, 1, 2, 3, 4, 5 };
-(gdb) print buf
-$1 = {4200912, 2686672, 2686728, 2686916, 1986038997, 1697514408}
-(gdb) print buf[2]
-$2 = 2686728
-(gdb) n
-13        return buf;
-(gdb) print buf
-$3 = {1, 1, 2, 3, 4, 5}
-(gdb) print buf[2]
-$4 = 2
-(gdb) b 17
-Breakpoint 2 at 0x40137b: file simple.c, line 17.
-(gdb) c
-Continuing.
-
-Breakpoint 2, mistake2 () at simple.c:19
-19        int *buf = malloc (sizeof (char) * 4);
-(gdb) print buf
-$5 = (int *) 0x3
-(gdb) list
-14      }
-15
-16      int *
-17      mistake2 ()
-18      {
-19        int *buf = malloc (sizeof (char) * 4);
-20        buf[2] = 2;
-21        return buf;
-22      }
-23
-(gdb) info stack
-#0  mistake2 () at simple.c:19
-#1  0x0040140d in main () at simple.c:46
-(gdb) frame 1
-#1  0x0040140d in main () at simple.c:46
-46        int *p[4] = { &mistake1 ()[1], &mistake2 ()[1], mistake3 (), mistake4
-() };
-(gdb) print p
-$6 = {0x28fee4, 0x852f40, 0x2b, 0x2}
-(gdb) call mistake4
-$7 = {int *()} 0x4013bd <mistake4>
-(gdb) q
-A debugging session is active.
-
-        Inferior 1 [process 6128] will be killed.
-
-Quit anyway? (y or n) y
+12 (mistake1)
+ Dort wird eine lokale Variable erzeugt und per return die Adresse des Arrays herauszugeben.
+ Der Zugriff auf diese lokale Variable ist aber nicht möglich, da die Variable außerhalb der 
+ Funktion nicht existiert.
+ 
+19 (mistake2)
+ Dort wird korrekt Speicher mit malloc() reserviert - jedoch nicht genug. Int Variablen brauchen
+ mehr Platz/Speicher als nur char Variablen.
+ 
+27 (mistake3)
+ Ein Pointertrick funktioniert nicht. Der Pointer buf zeigt auf die lokale Variable mistake2_.
+ Damit kann in der Funktion darauf zugegriffen werden, aber nicht von außen (siehe mistake1() ).
+ 
+38 (mistake4)
+ Hier wird der reservierte Speicher zu früh freigegen (free). Nach Freigabe des Speichers kann
+ auch hier nicht mehr auf den Wert zugegriffen werden, wie es in 51 passiert.
+ 
+55 (free)
+ Dort wird der Speicher, auf welchen der Pointer zeigt, freigegen, jedoch nicht alles. Siehe 46.
+ Dort wird der vordere Teil des Pointers 'abgeschnitten'.
