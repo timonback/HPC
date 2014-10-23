@@ -72,8 +72,8 @@ main (void)
 
   /* mhh muss hier noch etwas gefreed werden? */
   /* Fügen sie hier die korrekten aufrufe von free() ein */
-  free (p[0]-1);
-  free (p[1]-1);
+  free (p[0]-1); /*Beim Speichern der Pointer in p, wird der vordere Teil abgeschnitten.*/
+  free (p[1]-1); /*Dies muss bei free wieder zurückgenommen werden*/
   free (p[2]);
   free (p[3]);
 
