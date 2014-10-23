@@ -1,0 +1,71 @@
+Führen Sie folgende kleinere Tests durch, um gdb kennen zu lernen:
+GDB:
+
+back@cluster:~/HPC/Blatt02/simple? gdb simple
+GNU gdb (Ubuntu/Linaro 7.4-2012.04-0ubuntu2.1) 7.4-2012.04
+Copyright (C) 2012 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "x86_64-linux-gnu".
+For bug reporting instructions, please see:
+<http://bugs.launchpad.net/gdb-linaro/>...
+Reading symbols from /home/back/HPC/Blatt02/simple/simple...done.
+(gdb) b 10
+Breakpoint 1 at 0x4005b0: file simple.c, line 10.
+(gdb) run
+Starting program: /home/back/HPC/Blatt02/simple/simple
+warning: no loadable sections found in added symbol-file system-supplied DSO at 0x7ffff7ffa000
+
+Breakpoint 1, mistake1 () at simple.c:12
+12        int buf[] = { 1, 1, 2, 3, 4, 5 };
+(gdb) print buf
+$1 = {-140333504, 32767, 4195393, 0, 1, 0}
+(gdb) print buf[2]
+$2 = 4195393
+(gdb) n
+13        return buf;
+(gdb) print buf
+$3 = {1, 1, 2, 3, 4, 5}
+(gdb) print buf[2]
+$4 = 2
+(gdb) ptype buf
+type = int [6]
+(gdb) b 17
+Breakpoint 2 at 0x4005e8: file simple.c, line 17.
+(gdb) c
+Continuing.
+
+Breakpoint 2, mistake2 () at simple.c:19
+19        int *buf = malloc (sizeof (char) * 4);
+(gdb) ptype buf
+type = int *
+(gdb) c
+Continuing.
+
+Program received signal SIGSEGV, Segmentation fault.
+0x0000000000400621 in mistake3 () at simple.c:29
+29        buf[0] = 3;
+(gdb) list
+24      int *
+25      mistake3 ()
+26      {
+27        int mistake2_ = 0;
+28        int *buf = (int *) &mistake2;
+29        buf[0] = 3;
+30        return buf;
+31      }
+32
+33      int *
+(gdb) info stack
+#0  0x0000000000400621 in mistake3 () at simple.c:29
+#1  0x0000000000400699 in main () at simple.c:46
+(gdb) frame 1
+#1  0x0000000000400699 in main () at simple.c:46
+46        int *p[4] = { &mistake1 ()[1], &mistake2 ()[1], mistake3 (), mistake4 () };
+(gdb) print p
+$5 = {0x7fffffffdef4, 0x602014, 0x7fffffffe020, 0x0}
+(gdb) call mistake4()
+$6 = (int *) 0x602030
+(gdb)
