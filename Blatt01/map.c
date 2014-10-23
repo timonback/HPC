@@ -4,10 +4,10 @@
 
 typedef enum
 {
-    N = 0x0001,
-    S = 0x0010,
-    E = 0x0100,
-    W = 0x1000,
+    N = 1<<0,
+    S = 1<<1,
+    E = 1<<2,
+    W = 1<<3,
 } cardd;
 
 // Definieren Sie ein 3x3-Array namens map, das Werte vom Typ cardd enthält
@@ -19,7 +19,7 @@ cardd map[3][3];
 
 void set_dir(int x, int y, cardd dir)
 {
-    if (0 <= x && x < 3 && 0 <= y && y < 3)
+    if (0 <= x && x < sizeof(map)/sizeof(map[0]) && 0 <= y && y < sizeof(map[0])/sizeof(map[0][0]))
     {
         //Beinhaltet dir eine Himmelsrichtung?
         if (dir & N || dir & E || dir & S || dir & W)
@@ -39,110 +39,43 @@ void set_dir(int x, int y, cardd dir)
 void show_map(void)
 {
     int i,j;
-    for(i = 0; i < 3; i++)
+    for(i = 0; i < sizeof(map)/sizeof(map[0]); i++)
     {
-        for(j = 0; j < 3; j++)
-        {
-            if(j!= 0)
-            {
-                printf("   ");
-            }
-            
+        for(j = 0; j < sizeof(map[0])/sizeof(map[0][0]); j++)
+        {            
             cardd d = map[i][j];
 
             switch (d)
             {
                 case N:
-                    printf("%c", 'N');
+                    printf(" N ");
                     break;
-
-                case E:
-                    printf("%c", 'E');
+                case N|E:
+                    printf(" NE");
                     break;
-
+                case N|W:
+                    printf("NW ");
+                    break;
                 case S:
-                    printf("%c", 'S');
+                    printf(" S ");
                     break;
-
+                case S|E:
+                    printf(" SE");
+                    break;
+                case S|W:
+                    printf("SW ");
+                    break;
+                case E:
+                    printf("  E");
+                    break;
                 case W:
-                    printf("%c", 'W');
+                    printf("W  ");
                     break;
-
                 default:
-                    printf("%c", '0');
+                    printf(" 0 ");
             }
         }
         
-        printf("\n");
-    }
-}
-
-//Aufgabe 2.1
-void show_map2(void)
-{
-    int i, j;
-    //Durch die globale map iterieren
-    for (i = 0; i < 3; i++)
-    {
-        for (j = 0; j < 3; j++)
-        {
-            cardd d = map[i][j];
-
-            //Abstandshalter (Space)
-            if (j != 0)
-            {
-                //Immer 2 Leerzeichen
-                printf("  ");
-            }
-
-            //Ausgeben der Himmelsrichtungen
-            if (d & N)
-            {
-                //nord
-                printf("N");
-
-                //Zweite Richtung?
-                if (d & E)
-                {
-                    printf("E");
-                }
-                else if (d & W)
-                {
-                    printf("W");
-                }
-            }
-            else if (d & S)
-            {
-                //Sued
-                printf("S");
-
-                //Zweite Richtung?
-                if (d & E)
-                {
-                    printf("E");
-                }
-                else if (d & W)
-                {
-                    printf("W");
-                }
-            }
-            else if (d & E)
-            {
-                //ost
-                printf("E");
-            }
-            else if (d & W)
-            {   
-                //West
-                printf("W");
-            }
-            else
-            {
-                //Keine Angegeben
-                printf(" 0 ");
-            }
-        }
-
         printf("\n");
     }
 }
@@ -163,7 +96,7 @@ int main(void)
     set_dir(2, 2, S|E);
     set_dir(2, 2, E|W);
 
-    show_map2();
+    show_map();
 
     return 0;
 }
