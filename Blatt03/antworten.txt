@@ -1,0 +1,14 @@
+Aufgabe 1:
+	1.	Batch-Queuing bezeichnet das sequentielle Abarbeiten einer Warteschlange von Aufgaben.
+		Ein Batch-Queuing-System dient zur Verteilung der Aufgaben auf die verfügbaren Ressourcen unter Beachtung der einzelnen Anforderungen (z.B. Anzahl der Cores, Arbeitsspeicher) der jeweiligen Aufgabe.
+
+	2.	- Software-Systeme:		Portable Batch System, Simple Linux Utility for Resource Management, IBM Platform LSF
+		- Anwendungsgebiete:	Cluster (Hochleistungsrechner), Betriebssystem-Ebene (Ressourcenverteilung an Programme), Netzwerk (Versand von Paketen)
+
+	3.	Mit dem Befehl sbatch kann man Aufgaben in die Queue einordnen.
+
+	4.	SLURM (Simple Linux Utility for Resource Management)
+
+	5.	Die aktuellen Jobs und deren Status lassen sich per "squeue" anzeigen.
+
+	6.	Die Vorteile von sview bestehen aus der GUI und dem direkten Erstellen und Abbrechen der Jobs.
