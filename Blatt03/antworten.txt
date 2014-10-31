@@ -38,7 +38,8 @@ Aufgabe 1:
 	12.	Ein Job darf maximal eine Stunde auf dem Cluster laufen, bevor er beendet wird.
 
 	13.	Prioritäten lassen sich - leider etwas umständlich - mit "squeue -o %A\ %Q" anzeigen, wobei "%A" die JobID und "%Q" die
-		Priorität liefert.
+		Priorität liefert. Alternativ kann man sie sich mit einem Doppelklick auf einen Job in
+		"sview" anzeigen lassen.
 		Man kann die Prioritäten seiner Jobs lediglich verringern, nur ein Admin kann sie erhöhen.
 		Dies lässt sich mit "scontrol update jobid=[job_id] priority=1000" realisieren.
 
