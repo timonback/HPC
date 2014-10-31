@@ -180,6 +180,9 @@ initMatrices (struct calculation_arguments* arguments, struct options* options)
 /* getResiduum: calculates residuum                                         */
 /* Input: x,y - actual column and row                                       */
 /* ************************************************************************ */
+/* inline
+static //XXX: Optimize the (many) functions call.
+ TODO: Is already optimized, but destroys other performance debuggin */
 double
 getResiduum (struct calculation_arguments* arguments, struct options* options, int x, int y, double star)
 {
@@ -189,7 +192,9 @@ getResiduum (struct calculation_arguments* arguments, struct options* options, i
 	}
 	else
 	{
-		return ((TWO_PI_SQUARE * sin((double)(y) * PI * arguments->h) * sin((double)(x) * PI * arguments->h) * arguments->h * arguments->h - star) / 4.0);
+                //Double calculation eliminated. Result is cached.
+                double PiHeight = PI * arguments->h;
+		return ((TWO_PI_SQUARE * sin((double)(y) * PiHeight) * sin((double)(x) * PiHeight) * arguments->h * arguments->h - star) / 4.0);
 	}
 }
 
@@ -201,43 +206,39 @@ void
 calculate (struct calculation_arguments* arguments, struct calculation_results *results, struct options* options)
 {
 	int i, j;                                   /* local variables for loops  */
-	int m1, m2;                                 /* used as indices for old and new matrices       */
-	double star;                                /* four times center value minus 4 neigh.b values */
-	double korrektur;
+	int m1=0;                                   /* used as indices for old and new matrices       */
+        int m2=options->method;                     /* initialize m1 and m2 depending on algorithm */
+	//TODO: Elimate star
+        double star;                                /* four times center value minus 4 neigh.b values */
 	double residuum;                            /* residuum of current iteration                  */
 	double maxresiduum;                         /* maximum residuum value of a slave in iteration */
 
 	int N = arguments->N;
 	double*** Matrix = arguments->Matrix;
 
-	/* initialize m1 and m2 depending on algorithm */
-	if (options->method == METH_GAUSS_SEIDEL)
-	{
-		m1=0; m2=0;
-	}
-	else
-	{
-		m1=0; m2=1;
-	}
-
 	while (options->term_iteration > 0)
 	{
 		maxresiduum = 0;
+                
+                /* over all columns */
+                for (i = 1; i < N; i++)
+                {
 
-		/* over all rows */
-		for (j = 1; j < N; j++)
-		{
-			/* over all columns */
-			for (i = 1; i < N; i++)
-			{
+                        /* over all rows */
+                        for (j = 1; j < N; j++)
+                        {
+                                //TODO: try again later cache optimation is not working?
+                                //star = -Matrix[m2][i-1][j] - Matrix[m2][i][j-1] + (4.0 * Matrix[m2][i][j]) - Matrix[m2][i][j+1] - Matrix[m2][i+1][j];
+                            
 				star = -Matrix[m2][i-1][j] - Matrix[m2][i][j-1] - Matrix[m2][i][j+1] - Matrix[m2][i+1][j] + 4.0 * Matrix[m2][i][j];
 
 				residuum = getResiduum(arguments, options, i, j, star);
-				korrektur = residuum;
+				Matrix[m1][i][j] = Matrix[m2][i][j] + residuum;
+                                //XXX: Eliminate variable korrektur
+                                
 				residuum = (residuum < 0) ? -residuum : residuum;
 				maxresiduum = (residuum < maxresiduum) ? maxresiduum : residuum;
 
-				Matrix[m1][i][j] = Matrix[m2][i][j] + korrektur;
 			}
 		}
 
@@ -252,7 +253,7 @@ calculate (struct calculation_arguments* arguments, struct calculation_results *
 		{
 			if (maxresiduum < options->term_precision)
 			{
-				options->term_iteration = 0;
+                            options->term_iteration = 0;
 			}
 		}
 		else if (options->termination == TERM_ITER)
