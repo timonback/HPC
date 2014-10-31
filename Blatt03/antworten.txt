@@ -1,4 +1,5 @@
 Aufgabe 1:
+	
 	1.	Batch-Queuing bezeichnet das sequentielle Abarbeiten einer Warteschlange von Aufgaben.
 		Ein Batch-Queuing-System dient zur Verteilung der Aufgaben auf die verfügbaren Ressourcen unter Beachtung der einzelnen
 		Anforderungen (z.B. Anzahl der Cores, Arbeitsspeicher) der jeweiligen Aufgabe.
@@ -45,3 +46,16 @@ Aufgabe 1:
 
 	14. Die einzelnen Partitionen lassen sich mit "scontrol show partition" anzeigen.
 		Es gibt "cluster", "compute", "abu", "magny", ("io", "reservation").
+
+Aufgabe 2:
+
+	Frage:	Was fällt Ihnen auf?
+		- Knoten sind in unterschiedlicher Reihenfolge sortiert
+		- timescript.out wird als finales Dokument geschrieben (Zwischenausgaben nicht abrufbar)
+
+		Erklärung:
+		- Skripte starten nicht echt gleichzeitig, sondern leicht versetzt
+		- SLURM wartet mit der Ausgabe, bis der letzte Prozess abgeschlossen ist
+
+	Frage:	Könnte man die Datei timescript.out auch innerhalb des Scriptes timescript erzeugen?
+		- Es ginge, nur die Ausgabe wäre unbrauchbar, da die erzeugte Datei nicht threadsicher (wird bei jeder neuen Ausgabe überschrieben).

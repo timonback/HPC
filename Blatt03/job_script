@@ -1,9 +1,11 @@
 #!/bin/bash
 
 
-#SBATCH --time=1
+#SBATCH --time=00:00:10
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=4
 #SBATCH --output=timescript.out
 
 srun bash ~/HPC/Blatt03/timescript
+
+echo "fertig" >> job_script.out
