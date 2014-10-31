@@ -1,0 +1,7 @@
+#!/bin/bash
+
+
+#SBATCH --time=1
+#SBATCH --nodes=4
+
+srun bash ~/HPC/Blatt03/timescript
