@@ -1,6 +1,7 @@
 Aufgabe 1:
 	1.	Batch-Queuing bezeichnet das sequentielle Abarbeiten einer Warteschlange von Aufgaben.
-		Ein Batch-Queuing-System dient zur Verteilung der Aufgaben auf die verfügbaren Ressourcen unter Beachtung der einzelnen Anforderungen (z.B. Anzahl der Cores, Arbeitsspeicher) der jeweiligen Aufgabe.
+		Ein Batch-Queuing-System dient zur Verteilung der Aufgaben auf die verfügbaren Ressourcen unter Beachtung der einzelnen
+		Anforderungen (z.B. Anzahl der Cores, Arbeitsspeicher) der jeweiligen Aufgabe.
 
 	2.	- Software-Systeme:		Portable Batch System, Simple Linux Utility for Resource Management, IBM Platform LSF
 		- Anwendungsgebiete:	Cluster (Hochleistungsrechner), Betriebssystem-Ebene (Ressourcenverteilung an Programme), Netzwerk (Versand von Paketen)
@@ -12,3 +13,34 @@ Aufgabe 1:
 	5.	Die aktuellen Jobs und deren Status lassen sich per "squeue" anzeigen.
 
 	6.	Die Vorteile von sview bestehen aus der GUI und dem direkten Erstellen und Abbrechen der Jobs.
+
+	7.	Mit "scancel [job_id]" kann man Jobs vor ihrer Ausführung löschen bzw. bereits begonnene Jobs abbrechen.
+
+	8.	Auf einem Knoten können mehrere Jobs von verschiedenen Benutzern gleichzeitig laufen.
+
+	9.	Mit "squeue -j [job_id]" wird der detaillierte Status eines Jobs ausgegeben.
+
+	10.	Generell möglich sind:
+
+			- builtin
+			- backfill
+			- gang
+			- hold
+			- wiki
+			- wiki2
+
+		Auf dem Cluster des DKRZ wird das backfill-Scheduling-Verfahren benutzt.
+
+	11.	"srun" wird dazu benutzt, um einen Job auf dem Cluster auszuführen. Um einen oder mehrere bestimmte Knoten zu allokieren,
+		verwendet man die Option "-w [host1,host2,...]", was dann für den Knoten "west7" wie folgt aussieht:
+		"srun -w west7 hostname"
+
+	12.	Ein Job darf maximal eine Stunde auf dem Cluster laufen, bevor er beendet wird.
+
+	13.	Prioritäten lassen sich - leider etwas umständlich - mit "squeue -o %A\ %Q" anzeigen, wobei "%A" die JobID und "%Q" die
+		Priorität liefert.
+		Man kann die Prioritäten seiner Jobs lediglich verringern, nur ein Admin kann sie erhöhen.
+		Dies lässt sich mit "scontrol update jobid=[job_id] priority=1000" realisieren.
+
+	14. Die einzelnen Partitionen lassen sich mit "scontrol show partition" anzeigen.
+		Es gibt "cluster", "compute", "abu", "magny", ("io", "reservation").
