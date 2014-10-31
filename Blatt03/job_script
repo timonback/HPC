@@ -3,5 +3,7 @@
 
 #SBATCH --time=1
 #SBATCH --nodes=4
+#SBATCH --ntasks=4
+#SBATCH --output=timescript.out
 
 srun bash ~/HPC/Blatt03/timescript
