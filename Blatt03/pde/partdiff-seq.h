@@ -28,8 +28,8 @@
 #endif
 #define TWO_PI_SQUARE 		(2 * PI * PI)
 #define MAX_ITERATION  		200000
-#define METH_GAUSS_SEIDEL 	0
-#define METH_JACOBI 		1
+#define METH_GAUSS_SEIDEL 	1
+#define METH_JACOBI 		2
 #define FUNC_F0			1
 #define FUNC_FPISIN		2
 #define TERM_PREC		1

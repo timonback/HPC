@@ -2,7 +2,7 @@
 CC = gcc
 
 # Compiler flags, paths and libraries
-CFLAGS = -std=c99 -pedantic -Wall -Wextra
+CFLAGS = -O3 -std=c99 -pedantic -Wall -Wextra
 LFLAGS = $(CFLAGS)
 LIBS   = -lm
 

@@ -104,8 +104,8 @@ void AskParams( struct options* options, int argc, char** argv )
 		{
 			printf ( "\n" );
 			printf( "Select calculationmethod:\n");
-			printf( "  %1d: Gauss-Seidel.\n", 1+METH_GAUSS_SEIDEL); //XXX: Fix for METH transformation
-			printf( "  %1d: Jacobi.\n",       1+METH_JACOBI);
+			printf( "  %1d: Gauss-Seidel.\n", METH_GAUSS_SEIDEL);
+			printf( "  %1d: Jacobi.\n",       METH_JACOBI);
 			printf( "method> ");
 			fflush( stdout );
 			scanf("%d", &(options->method));
@@ -183,8 +183,8 @@ void AskParams( struct options* options, int argc, char** argv )
 			printf("\nUsage:\n");
 			printf("partdiff [num] [method] [lines] [func] [term] [prec/iter]\n");
 			printf("  - num:    number of threads to use\n");
-			printf("  - method: %1d: Gauss-Seidel.\n", 1+METH_GAUSS_SEIDEL); //Fix for METH Transformation
-			printf("            %1d: Jacobi.\n",       1+METH_JACOBI);
+			printf("  - method: %1d: Gauss-Seidel.\n", METH_GAUSS_SEIDEL);
+			printf("            %1d: Jacobi.\n",       METH_JACOBI);
 			printf("  - lines:  (lines=interlines) matrixsize = interlines*8+9\n");
 			printf("  - func:   %1d: f(x,y)=0.\n",                        FUNC_F0);
 			printf("            %1d: f(x,y)=2pi^2*sin(pi*x)sin(pi*y).\n", FUNC_FPISIN);
@@ -215,6 +215,4 @@ void AskParams( struct options* options, int argc, char** argv )
 			options->term_precision = 0;
 		}
 	}
-        
-        options->method--; //FIX for METH Transformation
 }
