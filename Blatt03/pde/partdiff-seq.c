@@ -194,7 +194,8 @@ getResiduum (struct calculation_arguments* arguments, struct options* options, i
 	{
                 //Double calculation eliminated. Result is cached.
                 double PiHeight = PI * arguments->h;
-		return ((TWO_PI_SQUARE * sin((double)(y) * PiHeight) * sin((double)(x) * PiHeight) * arguments->h * arguments->h - star) / 4.0);
+                //XXX: Cache matches arguments->h
+		return ((arguments->h * arguments->h * TWO_PI_SQUARE * sin((double)(y) * PiHeight) * sin((double)(x) * PiHeight) - star) / 4.0);
 	}
 }
 
@@ -276,6 +277,8 @@ displayStatistics (struct calculation_arguments* arguments, struct calculation_r
 
 	double time = (comp_time.tv_sec - start_time.tv_sec) + (comp_time.tv_usec - start_time.tv_usec) * 1e-6;
 	printf("Berechnungszeit:    %f s \n", time);
+        
+        //XXX: q=7 (+= 9) Optimization possible, but destroys code more than it will speed up
 
 	//Calculate Flops
 	// star op = 5 ASM ops (+1 XOR) with -O3, matrix korrektur = 1

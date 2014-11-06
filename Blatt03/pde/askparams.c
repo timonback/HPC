@@ -91,14 +91,13 @@ void AskParams( struct options* options, int argc, char** argv )
 		/* ----------------------------------------------- */
 		/* Get input: method, interlines, func, precision. */
 		/* ----------------------------------------------- */
-		int ret = 0;
 		do
 		{
 			printf ( "\n" );
 			printf("Select number of threads:\n");
 			printf("Number> ");
 			fflush( stdout );
-			ret = scanf("%d", &(options->number));
+			scanf("%d", &(options->number));
 		}
 		while ( (options->number < 0) );
 		do
@@ -109,7 +108,7 @@ void AskParams( struct options* options, int argc, char** argv )
 			printf( "  %1d: Jacobi.\n",       1+METH_JACOBI);
 			printf( "method> ");
 			fflush( stdout );
-			ret = scanf("%d", &(options->method));
+			scanf("%d", &(options->method));
 		}
 		while ( (options->method < METH_GAUSS_SEIDEL) || (options->method > METH_JACOBI) );
 		do
@@ -118,7 +117,7 @@ void AskParams( struct options* options, int argc, char** argv )
 			printf("Matrixsize = Interlines*8+9\n");
 			printf("Interlines> ");
 			fflush( stdout );
-			ret = scanf("%d", &(options->interlines));
+			scanf("%d", &(options->interlines));
 		}
 		while ( (options->interlines < 0) || (options->interlines > 1000) );
 		do
@@ -129,7 +128,7 @@ void AskParams( struct options* options, int argc, char** argv )
 			printf(" %1d: f(x,y)=2pi^2*sin(pi*x)sin(pi*y).\n", FUNC_FPISIN);
 			printf("interferencefunction> ");
 			fflush( stdout );
-			ret = scanf("%d", &(options->inf_func));
+			scanf("%d", &(options->inf_func));
 		}
 		while ( (options->inf_func < FUNC_F0) || (options->inf_func > FUNC_FPISIN) );
 		do
@@ -140,7 +139,7 @@ void AskParams( struct options* options, int argc, char** argv )
 			printf(" %1d: number of iterationes.\n", TERM_ITER);
 			printf("termination> ");
 			fflush( stdout );
-			ret = scanf("%d", &(options->termination));
+			scanf("%d", &(options->termination));
 		}
 		while ( (options->termination < TERM_PREC) || (options->termination > TERM_ITER) );
 
@@ -153,7 +152,7 @@ void AskParams( struct options* options, int argc, char** argv )
 				printf("  Range: 1e-4 .. 1e-20.\n");
 				printf("precision> ");
 				fflush( stdout );
-				ret = scanf("%lf", &(options->term_precision));
+				scanf("%lf", &(options->term_precision));
 			}
 			while ( (options->term_precision < 1e-20) || (options->term_precision > 1e-4));
 
@@ -168,7 +167,7 @@ void AskParams( struct options* options, int argc, char** argv )
 				printf("  Range: 1 .. %d.\n", MAX_ITERATION );
 				printf("Iterationes> ");
 				fflush( stdout );
-				ret = scanf("%d", &(options->term_iteration));
+				scanf("%d", &(options->term_iteration));
 			}
 			while ( (options->term_iteration < 1) || (options->term_iteration > MAX_ITERATION ));
 
