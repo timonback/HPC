@@ -1,0 +1,34 @@
+Die angegebene Zeit, ist die, welche ein Durchlauf einem unseren privaten PC benötigt. Es wird keine externe Zeitmessung verwendet, sondern die interne, welche schon ins Programm eingebaut ist.
+
+Das Programm wird mit diesen Parametern aufgerufen:
+ partdiff-seq 1 2 128 1 2 1024
+Zeit: 59.560407
+
+Entfernen der Warnung:
+ ret wird als Variable in der askparams.c Datei entfernt.
+
+1. Verbesserung (Zeile 193) - Zwischenspeichern
+ Das Produkt wird zwischengespeichert, da es 2x verwendet wird.
+ Neue Zeit: 58.856367
+ 
+2. Verbesserung (Zeile 230-235) - Speicherzugriffe
+ Die Speicherzugriffe auf das Array wurden optimiert, sodass Spalten und Zeilen in besserer Folge abgefragt werden.
+ Neue Zeit: 46.885682
+ 
+3. Verbesserung (Zeile 208+238-241) - Eleminierung von korrektur als Variable
+ Entfernung einer unnötigen Speicherung und somit Kopierung von Daten
+ (Könnte auch mit spar gemacht werden, wird dann aber von der Lesbarkeit unschön)
+ Neue Zeit: 44.482544
+ 
+4. Verbesserung (Zeile 183) - inlining
+ Die Methode getResiduum wird in den Rumpf des Aufrufers (calculate) kopiert. Dadurch werden Funktionssprünge vermieden
+ Neue Zeit: 29.077663
+ 
+5. Verbesserung (Zeile 237-251) - Einsparung von Mathematik
+ Eine der Multiplikation ist überflüssig und kann ersetzt/eingespart werden.
+ Neue Zeit: 27.800590
+ 
+6. Verbesserung (Makefile) - -O3
+ Das Programm vom Compiler maximal optimieren lassen mit der Kompileroption -O3
+ Neue Zeit: 8.136465
+ 
