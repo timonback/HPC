@@ -26,6 +26,7 @@
 #include <math.h>
 #include <malloc.h>
 #include <sys/time.h>
+#include <omp.h>
 
 #include "partdiff-seq.h"
 
@@ -222,41 +223,64 @@ calculate (struct calculation_arguments const* arguments, struct calculation_res
 		double** Matrix_In  = arguments->Matrix[m2];
 
 		maxresiduum = 0;
+		results->stat_precision = maxresiduum;
 
-		/* over all rows */
-		for (i = 1; i < N; i++)
+		int num_threads = 40; //omp_get_num_threads();
+		int counter = 0;
+		//#pragma omp parallel private(i, j, star, residuum, maxresiduum)
+		for(int thread_num=0; thread_num<num_threads; thread_num++)
 		{
-			double fpisin_i = 0.0;
+			//int thread_num = omp_get_num_threads();
 
-			if (options->inf_func == FUNC_FPISIN)
-			{
-				fpisin_i = fpisin * sin(pih * (double)i);
-			}
+			double my_width = (double)(N-1) /  num_threads;
+			int my_thread =  thread_num;
+			int i_start = (double)my_width * my_thread + 1;
+			int i_end = (double)my_width * (my_thread+1);
 
-			/* over all columns */
-			for (j = 1; j < N; j++)
+			/* over all rows */
+			for (i = i_start; i <= i_end; i++)
 			{
-				star = 0.25 * (Matrix_In[i-1][j] + Matrix_In[i][j-1] + Matrix_In[i][j+1] + Matrix_In[i+1][j]);
+				double fpisin_i = 0.0;
+
+				counter++;
+				//printf("%i\n", i);
 
 				if (options->inf_func == FUNC_FPISIN)
 				{
-					star += fpisin_i * sin(pih * (double)j);
+					fpisin_i = fpisin * sin(pih * (double)i);
 				}
 
-				if (options->termination == TERM_PREC || term_iteration == 1)
+				/* over all columns */
+				for (j = 1; j < N; j++)
 				{
-					residuum = Matrix_In[i][j] - star;
-					residuum = (residuum < 0) ? -residuum : residuum;
-					maxresiduum = (residuum < maxresiduum) ? maxresiduum : residuum;
-				}
+					star = 0.25 * (Matrix_In[i-1][j] + Matrix_In[i][j-1] + Matrix_In[i][j+1] + Matrix_In[i+1][j]);
 
-				Matrix_Out[i][j] = star;
+					if (options->inf_func == FUNC_FPISIN)
+					{
+						star += fpisin_i * sin(pih * (double)j);
+					}
+
+					if (options->termination == TERM_PREC || term_iteration == 1)
+					{
+						residuum = Matrix_In[i][j] - star;
+						residuum = (residuum < 0) ? -residuum : residuum;
+						maxresiduum = (residuum < maxresiduum) ? maxresiduum : residuum;
+					}
+
+					Matrix_Out[i][j] = star;
+				}
 			}
+
+			printf("Thread %i from %i till %i\n", thread_num, i_start, i_end);
+
+			//#pragma omp critical
+			results->stat_precision = (maxresiduum < results->stat_precision) ? results->stat_precision : maxresiduum;
 		}
 
-		results->stat_iteration++;
-		results->stat_precision = maxresiduum;
+		printf("%d\n", counter);
 
+		results->stat_iteration++;
+		
 		/* exchange m1 and m2 */
 		i = m1;
 		m1 = m2;
@@ -380,6 +404,8 @@ main (int argc, char** argv)
 
 	/* get parameters */
 	AskParams(&options, argc, argv);              /* ************************* */
+
+	omp_set_num_threads(options.number);
 
 	initVariables(&arguments, &results, &options);           /* ******************************************* */
 
