@@ -2,7 +2,7 @@
 CC = gcc
 
 # Compiler flags, paths and libraries
-CFLAGS = -O3 -std=c99 -pedantic -Wall -Wextra
+CFLAGS = -O3 -ffast-math -mtune=corei7 -mfpmath=both -std=c99 -pedantic -Wall -Wextra
 LFLAGS = $(CFLAGS)
 LIBS   = -lm
 

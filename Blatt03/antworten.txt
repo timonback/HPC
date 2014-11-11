@@ -36,7 +36,7 @@ Aufgabe 1:
 		verwendet man die Option "-w [host1,host2,...]", was dann für den Knoten "west7" wie folgt aussieht:
 		"srun -w west7 hostname"
 
-	12.	Ein Job darf maximal eine Stunde auf dem Cluster laufen, bevor er beendet wird.
+	12.	Ein Job darf maximal eine Stunde auf dem Cluster laufen, bevor er beendet wird. //6h
 
 	13.	Prioritäten lassen sich - leider etwas umständlich - mit "squeue -o %A\ %Q" anzeigen, wobei "%A" die JobID und "%Q" die
 		Priorität liefert. Alternativ kann man sie sich mit einem Doppelklick auf einen Job in
@@ -46,6 +46,7 @@ Aufgabe 1:
 
 	14. Die einzelnen Partitionen lassen sich mit "scontrol show partition" anzeigen.
 		Es gibt "cluster", "compute", "abu", "magny", ("io", "reservation").
+		Mit "srun -p [partition]" kann eine andere als die Standardpartition für einen Job verwendet werden.
 
 Aufgabe 2:
 
