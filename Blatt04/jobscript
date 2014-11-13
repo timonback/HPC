@@ -2,12 +2,8 @@
 
 
 #SBATCH --time=01:00:00
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=12
+#SBATCH --nodes=3
+#SBATCH --ntasks-per-node=1
 #SBATCH --output=output.out
 
-rm ~/HPC/Blatt04/job_script.out
-
 srun ~/HPC/Blatt04/partdiff-seq 12 2 512 2 2 1024
-
-echo "fertig" >> ~/HPC/Blatt04/job_script.out

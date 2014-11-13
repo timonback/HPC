@@ -1,0 +1,53 @@
+#!/bin/bash
+
+
+#SBATCH --time=05:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=3
+#SBATCH --output=messung1.out
+
+srun ~/HPC/Blatt04/partdiff-seq 1 2 512 2 2 1024
+
+echo --------------------------------------------
+
+srun ~/HPC/Blatt04/partdiff-seq 2 2 512 2 2 1024
+
+echo --------------------------------------------
+
+srun ~/HPC/Blatt04/partdiff-seq 3 2 512 2 2 1024
+
+echo -------------------------------------------
+
+srun ~/HPC/Blatt04/partdiff-seq 4 2 512 2 2 1024
+
+echo -------------------------------------------
+
+srun ~/HPC/Blatt04/partdiff-seq 5 2 512 2 2 1024
+
+echo -------------------------------------------
+
+srun ~/HPC/Blatt04/partdiff-seq 6 2 512 2 2 1024
+
+echo -------------------------------------------
+
+srun ~/HPC/Blatt04/partdiff-seq 7 2 512 2 2 1024
+
+echo -------------------------------------------
+
+srun ~/HPC/Blatt04/partdiff-seq 8 2 512 2 2 1024
+
+echo -------------------------------------------
+
+srun ~/HPC/Blatt04/partdiff-seq 9 2 512 2 2 1024
+
+echo -------------------------------------------
+
+srun ~/HPC/Blatt04/partdiff-seq 10 2 512 2 2 1024
+
+echo -------------------------------------------
+
+srun ~/HPC/Blatt04/partdiff-seq 11 2 512 2 2 1024
+
+echo -------------------------------------------
+
+srun ~/HPC/Blatt04/partdiff-seq 12 2 512 2 2 1024
