@@ -223,26 +223,26 @@ calculate (struct calculation_arguments const* arguments, struct calculation_res
 		double** Matrix_In  = arguments->Matrix[m2];
 
 		maxresiduum = 0;
-		results->stat_precision = maxresiduum;
 
-		int num_threads = 40; //omp_get_num_threads();
-		int counter = 0;
-		//#pragma omp parallel private(i, j, star, residuum, maxresiduum)
-		for(int thread_num=0; thread_num<num_threads; thread_num++)
+		//int num_threads = 40;
+		int num_threads = omp_get_max_threads();
+		//int counter = 0;
+		#pragma omp parallel private(i, j, star, residuum)
+		//for(int thread_num = 0; thread_num < num_threads; thread_num++)
 		{
-			//int thread_num = omp_get_num_threads();
+			double thread_maxresiduum = maxresiduum;
 
-			double my_width = (double)(N-1) /  num_threads;
-			int my_thread =  thread_num;
-			int i_start = (double)my_width * my_thread + 1;
-			int i_end = (double)my_width * (my_thread+1);
+			int thread_num = omp_get_thread_num();
+			double my_width = (double)(N - 1) /  num_threads;
+			int i_start = (double)my_width * thread_num + 1; //my_thread
+			int i_end = (double)my_width * (thread_num + 1); //my_thread
 
 			/* over all rows */
 			for (i = i_start; i <= i_end; i++)
 			{
 				double fpisin_i = 0.0;
 
-				counter++;
+				//debug: counter++;
 				//printf("%i\n", i);
 
 				if (options->inf_func == FUNC_FPISIN)
@@ -264,21 +264,22 @@ calculate (struct calculation_arguments const* arguments, struct calculation_res
 					{
 						residuum = Matrix_In[i][j] - star;
 						residuum = (residuum < 0) ? -residuum : residuum;
-						maxresiduum = (residuum < maxresiduum) ? maxresiduum : residuum;
+						thread_maxresiduum = (residuum < thread_maxresiduum) ? thread_maxresiduum : residuum;
 					}
 
 					Matrix_Out[i][j] = star;
 				}
 			}
 
-			printf("Thread %i from %i till %i\n", thread_num, i_start, i_end);
+			//printf("Thread %i from %i till %i\n", thread_num, i_start, i_end);
 
-			//#pragma omp critical
-			results->stat_precision = (maxresiduum < results->stat_precision) ? results->stat_precision : maxresiduum;
+			#pragma omp critical
+			maxresiduum = (maxresiduum < thread_maxresiduum) ? thread_maxresiduum : maxresiduum;
 		}
 
-		printf("%d\n", counter);
+		//printf("%d\n", counter);
 
+		results->stat_precision = maxresiduum;
 		results->stat_iteration++;
 		
 		/* exchange m1 and m2 */
