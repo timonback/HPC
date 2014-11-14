@@ -3,7 +3,7 @@
 
 #SBATCH --time=05:00:00
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=3
+#SBATCH --ntasks-per-node=1
 #SBATCH --output=messung1.out
 
 srun ~/HPC/Blatt04/partdiff-seq 1 2 512 2 2 1024
