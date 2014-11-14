@@ -224,26 +224,31 @@ calculate (struct calculation_arguments const* arguments, struct calculation_res
 
 		maxresiduum = 0;
 
-		//int num_threads = 40;
+		//Anzahl der Threads auslesen/speichern
 		int num_threads = omp_get_max_threads();
-		//int counter = 0;
+		
+		//num_threads = 40; //DEBUG (manuelles) setzen der Threadanzahl
+		
+		
+		/// Paralleliserung START
+		//DEBUG (Manuell) mit einem Thread linear alle 'Threads' abarbeiten.
+		//Dadurch kann auf das #pragma verzichtet werden.
+		// -> Die for Schleife ersetzt die Parralelität (Testzweck)
+		
+		//for(int thread_num = 0; thread_num < num_threads; thread_num++) 
 		#pragma omp parallel private(i, j, star, residuum)
-		//for(int thread_num = 0; thread_num < num_threads; thread_num++)
 		{
-			double thread_maxresiduum = maxresiduum;
+			double thread_maxresiduum = maxresiduum; //Thread interner maxresiduum
 
-			int thread_num = omp_get_thread_num();
-			double my_width = (double)(N - 1) /  num_threads;
-			int i_start = (double)my_width * thread_num + 1; //my_thread
-			int i_end = (double)my_width * (thread_num + 1); //my_thread
+			double my_width = (double)(N - 1) /  num_threads;	//Die 'Breite' eines Thread-Datenblocks bestimmen
+			int thread_num = omp_get_thread_num();				//Eigene Threadnummer bestimmen
+			int i_start = (double)my_width * thread_num + 1;	//Erster Index des Threadsdatenblocks
+			int i_end = (double)my_width * (thread_num + 1);	//Letzter Index des Threadsdatenblocks
 
-			/* over all rows */
+			/* over all rows (inklusive des letzten Index) */
 			for (i = i_start; i <= i_end; i++)
 			{
 				double fpisin_i = 0.0;
-
-				//debug: counter++;
-				//printf("%i\n", i);
 
 				if (options->inf_func == FUNC_FPISIN)
 				{
@@ -264,6 +269,7 @@ calculate (struct calculation_arguments const* arguments, struct calculation_res
 					{
 						residuum = Matrix_In[i][j] - star;
 						residuum = (residuum < 0) ? -residuum : residuum;
+						//Das maxresiduum in das Thread interne thread_maxresiduum speichern
 						thread_maxresiduum = (residuum < thread_maxresiduum) ? thread_maxresiduum : residuum;
 					}
 
@@ -271,13 +277,15 @@ calculate (struct calculation_arguments const* arguments, struct calculation_res
 				}
 			}
 
+			//Debug-Ausgabe: Die Datenbereiche von jedem Thread ()
 			//printf("Thread %i from %i till %i\n", thread_num, i_start, i_end);
 
+			//Am Ende maxresiduum mit thread_maxresiduum zusammenführen.
+			//Nur einmal pro Thread einen (eventuell zeitkritischen) critical Bereich
 			#pragma omp critical
 			maxresiduum = (maxresiduum < thread_maxresiduum) ? thread_maxresiduum : maxresiduum;
 		}
-
-		//printf("%d\n", counter);
+		/// Paralleliserung END
 
 		results->stat_precision = maxresiduum;
 		results->stat_iteration++;
