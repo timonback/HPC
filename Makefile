@@ -5,7 +5,7 @@ INF=informatik.uni-hamburg.de
 COLOR=\e[0;32m
 NC=\e[0m
 CLEAN=find -mindepth 2 -name Makefile -execdir make clean \;
-TAR=tar --exclude=*.swp --exclude=*.pdf --transform='s|$(DIR:/=)|$(NAMES)|' -czvf $(NAMES).tar.gz $(DIR)
+TAR=tar --exclude=*.swp --transform='s|$(DIR:/=)|$(NAMES)|' -czvf $(NAMES).tar.gz $(DIR)
 
 all: cleansubdirs package send
 
