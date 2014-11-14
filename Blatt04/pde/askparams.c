@@ -80,7 +80,7 @@
 #include <inttypes.h>
 #include <string.h>
 
-#include "partdiff-seq.h"
+#include "partdiff-openmp.h"
 
 static
 void

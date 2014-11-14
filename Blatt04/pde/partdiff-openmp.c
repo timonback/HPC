@@ -28,7 +28,7 @@
 #include <sys/time.h>
 #include <omp.h>
 
-#include "partdiff-seq.h"
+#include "partdiff-openmp.h"
 
 struct calculation_arguments
 {
