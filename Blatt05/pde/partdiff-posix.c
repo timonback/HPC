@@ -26,8 +26,9 @@
 #include <math.h>
 #include <malloc.h>
 #include <sys/time.h>
+#include <pthread.h>
 
-#include "partdiff-seq.h"
+#include "partdiff-posix.h"
 
 struct calculation_arguments
 {
@@ -177,6 +178,53 @@ initMatrices (struct calculation_arguments* arguments, struct options const* opt
 	}
 }
 
+void *do_calc(void *tid, int arg[])
+{
+	double maxresiduum = 0;
+	int i, j;
+	double star;                                /* four times center value minus 4 neigh.b values */
+	double residuum;                            /* residuum of current iteration                  */
+	double pih = 0.0;
+	double fpisin = 0.0;
+
+	double const h = arg[0];
+	int const N = arg[1];
+	int term_iteration = arg[2];
+	int inf_func = arg[4];
+	int termination = arg[5];
+
+		/* over all rows */
+		for (i = 1; i < N; i++)
+		{
+			double fpisin_i = 0.0;
+
+			if (inf_func == FUNC_FPISIN)
+			{
+				fpisin_i = fpisin * sin(pih * (double)i);
+			}
+
+			/* over all columns */
+			for (j = 1; j < N; j++)
+			{
+				star = 0.25 * (Matrix_In[i-1][j] + Matrix_In[i][j-1] + Matrix_In[i][j+1] + Matrix_In[i+1][j]);
+
+				if (inf_func == FUNC_FPISIN)
+				{
+					star += fpisin_i * sin(pih * (double)j);
+				}
+
+				if (termination == TERM_PREC || term_iteration == 1)
+				{
+					residuum = Matrix_In[i][j] - star;
+					residuum = (residuum < 0) ? -residuum : residuum;
+					maxresiduum = (residuum < maxresiduum) ? maxresiduum : residuum;
+				}
+
+				Matrix_Out[i][j] = star;
+			}
+		}
+}
+
 /* ************************************************************************ */
 /* calculate: solves the equation                                           */
 /* ************************************************************************ */
@@ -184,19 +232,18 @@ static
 void
 calculate (struct calculation_arguments const* arguments, struct calculation_results *results, struct options const* options)
 {
-	int i, j;                                   /* local variables for loops  */
+	int i;                                   /* local variables for loops  */
 	int m1, m2;                                 /* used as indices for old and new matrices       */
-	double star;                                /* four times center value minus 4 neigh.b values */
-	double residuum;                            /* residuum of current iteration                  */
 	double maxresiduum;                         /* maximum residuum value of a slave in iteration */
 
-	int const N = arguments->N;
 	double const h = arguments->h;
+	int const N = arguments->N;
+	int term_iteration = options->term_iteration;
 
 	double pih = 0.0;
 	double fpisin = 0.0;
 
-	int term_iteration = options->term_iteration;
+	int arg[] = {h, N, term_iteration, options->inf_func, options->termination};
 
 	/* initialize m1 and m2 depending on algorithm */
 	if (options->method == METH_JACOBI)
@@ -216,42 +263,19 @@ calculate (struct calculation_arguments const* arguments, struct calculation_res
 		fpisin = 0.25 * TWO_PI_SQUARE * h * h;
 	}
 
+	pthread_t threads[options->number];
+
+	int rc;
+
 	while (term_iteration > 0)
 	{
 		double** Matrix_Out = arguments->Matrix[m1];
 		double** Matrix_In  = arguments->Matrix[m2];
 
-		maxresiduum = 0;
-
-		/* over all rows */
-		for (i = 1; i < N; i++)
+		rc = pthread_create(&threads[1], NULL, do_calc, (void *)arg);
+		if (rc)
 		{
-			double fpisin_i = 0.0;
-
-			if (options->inf_func == FUNC_FPISIN)
-			{
-				fpisin_i = fpisin * sin(pih * (double)i);
-			}
-
-			/* over all columns */
-			for (j = 1; j < N; j++)
-			{
-				star = 0.25 * (Matrix_In[i-1][j] + Matrix_In[i][j-1] + Matrix_In[i][j+1] + Matrix_In[i+1][j]);
-
-				if (options->inf_func == FUNC_FPISIN)
-				{
-					star += fpisin_i * sin(pih * (double)j);
-				}
-
-				if (options->termination == TERM_PREC || term_iteration == 1)
-				{
-					residuum = Matrix_In[i][j] - star;
-					residuum = (residuum < 0) ? -residuum : residuum;
-					maxresiduum = (residuum < maxresiduum) ? maxresiduum : residuum;
-				}
-
-				Matrix_Out[i][j] = star;
-			}
+			//Fehlerbehandlung
 		}
 
 		results->stat_iteration++;
