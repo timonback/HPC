@@ -237,6 +237,8 @@ calculate (struct calculation_arguments const* arguments, struct calculation_res
 		
 		//for(int thread_num = 0; thread_num < num_threads; thread_num++) 
 		#pragma omp parallel private(i, j, star, residuum)
+		//Hinweis: Wenn noch stattdessen mit: #pragma omp parallel for private(j, star, residuum), schedule(dynamic, 1), reduction(max:maxresiduum)
+		// Dann muss sich nicht um Threadspezifische Dinge und das zusammenführen von maxresiduum gekümmert werden.
 		{
 			double thread_maxresiduum = maxresiduum; //Thread interner maxresiduum
 
