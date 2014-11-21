@@ -6,12 +6,12 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --output=output.out
 
-srun ~/HPC/Blatt05/partdiff-posix 12 2 512 2 2 512
-echo 
-echo 
-echo 
-srun ~/HPC/Blatt05/partdiff-posix 12 2 512 2 2 512
-echo 
-echo 
-echo 
-srun ~/HPC/Blatt05/partdiff-posix 12 2 512 2 2 512
+srun ~/HPC/Blatt05/pde/partdiff-posix 12 2 512 2 2 512
+echo
+echo
+echo
+srun ~/HPC/Blatt05/pde/partdiff-posix 12 2 512 2 2 512
+echo
+echo
+echo
+srun ~/HPC/Blatt05/pde/partdiff-posix 12 2 512 2 2 512
