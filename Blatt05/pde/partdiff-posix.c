@@ -178,13 +178,18 @@ initMatrices (struct calculation_arguments* arguments, struct options const* opt
 	}
 }
 
+//Struktur, um der Funktion do_calc Parameter zu übergeben
 struct pthread_calc_args {
+    //Der Rückgabewert der Funktion do_calc
     double returnValue;
     
+    //Variablen für den Thread-Bereich
     int thread_number;
     int start_i;
     int end_i;
     
+    //Parameter der Funktion calculate, welche zwecks der Verwendung in do_calc
+    //ausgelagert wurden
     double** Matrix_Out;
     double** Matrix_In;
     int term_iteration;
