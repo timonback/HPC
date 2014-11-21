@@ -2,9 +2,9 @@
 CC = gcc
 
 # Compiler flags, paths and libraries
-CFLAGS = -std=c99 -pedantic -Wall -Wextra -O2 -ggdb
+CFLAGS = -std=c99 -pedantic -Wall -Wextra -O2 -ggdb -
 LFLAGS = $(CFLAGS)
-LIBS   = -lm
+LIBS   = -lm -lpthread
 
 OBJS = partdiff-posix.o askparams.o
 
