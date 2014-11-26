@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	
-	char recieve[BUF_SIZE];
+	char receive[BUF_SIZE];
 	
 	if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
 		printf("Error in MPI_Barrier\n");
@@ -36,8 +36,8 @@ int main(int argc, char* argv[])
 	if(rank == 0) {
 		int i;
 		for(i=1; i<size; ++i) {
-			MPI_Recv(recieve, BUF_SIZE, MPI_CHAR, i, 0, MPI_COMM_WORLD, NULL);
-			printf("%s\n", recieve);
+			MPI_Recv(receive, BUF_SIZE, MPI_CHAR, i, 0, MPI_COMM_WORLD, NULL);
+			printf("%s\n", receive);
 		}
 	} else {
 		char message[BUF_SIZE];
@@ -59,8 +59,8 @@ int main(int argc, char* argv[])
 		strftime(message+strlen(message), BUF_SIZE-strlen(message), "%Y-%m-%d %H:%M:%S.", tmptr);
 		snprintf(message+strlen(message), BUF_SIZE-strlen(message), "%6ld", time.tv_usec);
 		
-			MPI_Send(message, BUF_SIZE, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
-		}
+		MPI_Send(message, BUF_SIZE, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+	}
 	
 	if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
 		printf("Error in MPI_Barrier\n");
