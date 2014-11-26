@@ -19,7 +19,7 @@ all: timempi timempi2
 timempi: $(OBJS_TIME) Makefile
 	$(CC) $(LFLAGS) -o $@ $(OBJS_TIME) $(LIBS)
 	
-timempi: $(OBJS_TIME2) Makefile
+timempi2: $(OBJS_TIME2) Makefile
 	$(CC) $(LFLAGS) -o $@ $(OBJS_TIME2) $(LIBS)
 
 clean:
