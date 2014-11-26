@@ -6,5 +6,9 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --output=output.out
 
-salloc -N3
+#salloc -N3
 mpiexec ~/HPC/Blatt06/pde/timempi
+
+echo -----------------------------------
+
+mpiexec ~/HPC/Blatt06/pde/timempi2
