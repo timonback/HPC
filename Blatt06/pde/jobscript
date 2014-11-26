@@ -1,0 +1,10 @@
+#!/bin/bash
+
+
+#SBATCH --time=00:05:00
+#SBATCH -N3
+#SBATCH --ntasks-per-node=1
+#SBATCH --output=output.out
+
+salloc -N3
+mpiexec ~/HPC/Blatt06/pde/timempi
