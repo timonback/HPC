@@ -7,7 +7,6 @@
 int*
 init (int N, int rank)
 {
-    //todo
     int* buf = malloc(sizeof(int) * N);
 
     srand(time(NULL) + rank);
@@ -21,7 +20,7 @@ init (int N, int rank)
 }
 
 int*
-circle (int* buf, int step_width, int rank, int size)
+circle (int* buf, int step_width, int previous_width, int rank, int size)
 {
     if (rank < size - 1)
     {
@@ -31,14 +30,16 @@ circle (int* buf, int step_width, int rank, int size)
     {
         MPI_Send(buf, step_width, MPI_INT, 0, 0, MPI_COMM_WORLD);
     }
+
+    buf = realloc(buf, previous_width * sizeof(int));
     
     if (rank > 0)
     {
-        MPI_Recv(buf, step_width, MPI_INT, rank - 1, 0, MPI_COMM_WORLD, NULL);
+        MPI_Recv(buf, step_width + 1, MPI_INT, rank - 1, 0, MPI_COMM_WORLD, NULL);
     }
     else
     {
-        MPI_Recv(buf, step_width, MPI_INT, size - 1, 0, MPI_COMM_WORLD, NULL);
+        MPI_Recv(buf, step_width + 1, MPI_INT, size - 1, 0, MPI_COMM_WORLD, NULL);
     }
 
     return buf;
@@ -80,7 +81,7 @@ main (int argc, char** argv)
     //array length
     N = atoi(arg);
 
-    double data_width = N / size;
+    double data_width = (double)N / (double)size;
     int data_start = data_width * rank;
     int data_end = data_width * (rank + 1);
     int data_realWidth = data_end - data_start;
@@ -95,15 +96,16 @@ main (int argc, char** argv)
         {
            printf ("rank %d: %d\n", rank, buf[i]);
         }
-    
-        int buf_temp[data_realWidth + 1];
-        int data_width_temp;
 
         for (int i = 1; i < size; i++)
         {
-            data_width_temp = (data_width * (i + 1)) - (data_width * i);
-            MPI_Recv(buf_temp, data_width_temp, MPI_INT, i, 1, MPI_COMM_WORLD, NULL);
-            for (int j = 0; j < data_width_temp; j++)
+            int rank_realWidth;
+            MPI_Recv(&rank_realWidth, 1, MPI_INT, i, 5, MPI_COMM_WORLD, NULL);
+            int buf_temp[rank_realWidth];
+
+            MPI_Recv(buf_temp, rank_realWidth, MPI_INT, i, 1, MPI_COMM_WORLD, NULL);
+            
+            for (int j = 0; j < rank_realWidth; j++)
             {
                 printf ("rank %d: %d\n", i, buf_temp[j]);
             }
@@ -111,6 +113,7 @@ main (int argc, char** argv)
     }
     else
     {
+        MPI_Send(&data_realWidth, 1, MPI_INT, 0, 5, MPI_COMM_WORLD);
         MPI_Send(buf, data_realWidth, MPI_INT, 0, 1, MPI_COMM_WORLD);
     }
 
@@ -127,6 +130,8 @@ main (int argc, char** argv)
         MPI_Recv(&term_value, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, NULL);
     }
 
+    int num_of_iterations = 0;
+
     do
     {
         if (rank == size - 1)
@@ -141,10 +146,31 @@ main (int argc, char** argv)
         {
             MPI_Recv(&compare_value, 1, MPI_INT, size - 1, 3, MPI_COMM_WORLD, NULL);
         }
-        MPI_Barrier(MPI_COMM_WORLD);
 
-        circle(buf, data_realWidth, rank, size);
-    } while (term_value != compare_value);
+        int previous_width;
+
+        if(rank > 0)
+        {
+            MPI_Send(&data_realWidth, 1, MPI_INT, rank - 1, 7, MPI_COMM_WORLD);
+        }
+        else
+        {
+            MPI_Send(&data_realWidth, 1, MPI_INT, size - 1, 7, MPI_COMM_WORLD);
+        }
+
+        if(rank < size - 1)
+        {
+            MPI_Recv(&previous_width, 1, MPI_INT, rank + 1, 7, MPI_COMM_WORLD, NULL);
+        }
+        else
+        {
+            MPI_Recv(&previous_width, 1, MPI_INT, 0, 7, MPI_COMM_WORLD, NULL);
+        }
+
+        circle(buf, data_realWidth, previous_width, rank, size);
+
+        num_of_iterations++;
+    } while (term_value != compare_value && num_of_iterations < size - 1);
 
     if (rank == 0)
     {
@@ -154,15 +180,15 @@ main (int argc, char** argv)
         {
             printf ("rank %d: %d\n", rank, buf[i]);
         }
-        int buf_temp[data_realWidth + 1];
-
-        int data_width_temp;
 
         for (int i = 1; i < size; i++)
         {
-            data_width_temp = (data_width * (i + 1)) - (data_width * i);
-            MPI_Recv(buf_temp, data_width_temp, MPI_INT, i, 4, MPI_COMM_WORLD, NULL);
-            for (int j = 0; j < data_width_temp; j++)
+            int rank_realWidth;
+            MPI_Recv(&rank_realWidth, 1, MPI_INT, i, 6, MPI_COMM_WORLD, NULL);
+            int buf_temp[rank_realWidth];
+
+            MPI_Recv(buf_temp, rank_realWidth, MPI_INT, i, 4, MPI_COMM_WORLD, NULL);
+            for (int j = 0; j < rank_realWidth; j++)
             {
                 printf ("rank %d: %d\n", i, buf_temp[j]);
             }
@@ -170,6 +196,7 @@ main (int argc, char** argv)
     }
     else
     {
+        MPI_Send(&data_realWidth, 1, MPI_INT, 0, 6, MPI_COMM_WORLD);
         MPI_Send(buf, data_realWidth, MPI_INT, 0, 4, MPI_COMM_WORLD);
     }
 
