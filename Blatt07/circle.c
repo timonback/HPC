@@ -4,12 +4,17 @@
 
 #include <mpi.h>
 
+#define UPPER_PROCESS(currentRank, rankSize) (currentRank+1 < rankSize ? currentRank+1 : 0)
+#define LOWER_PROCESS(currentRank, rankSize) (currentRank   > 0 ? currentRank-1 : rankSize-1)
+
+#define UNUSED(arg) (void)arg;
+
 int*
 init (int N, int rank)
 {
     int* buf = malloc(sizeof(int) * N);
 
-    srand(time(NULL) + rank);
+    srand(time(NULL) + (15*rank) );
 
     for (int i = 0; i < N; i++)
     {
@@ -22,27 +27,29 @@ init (int N, int rank)
 int*
 circle (int* buf, int step_width, int previous_width, int rank, int size)
 {
-    if (rank < size - 1)
-    {
-        MPI_Send(buf, step_width, MPI_INT, rank + 1, 0, MPI_COMM_WORLD);
-    }
-    else
-    {
-        MPI_Send(buf, step_width, MPI_INT, 0, 0, MPI_COMM_WORLD);
-    }
+    MPI_Send(buf, step_width, MPI_INT, UPPER_PROCESS(rank, size), 0, MPI_COMM_WORLD);
 
     buf = realloc(buf, previous_width * sizeof(int));
     
-    if (rank > 0)
-    {
-        MPI_Recv(buf, step_width + 1, MPI_INT, rank - 1, 0, MPI_COMM_WORLD, NULL);
-    }
-    else
-    {
-        MPI_Recv(buf, step_width + 1, MPI_INT, size - 1, 0, MPI_COMM_WORLD, NULL);
-    }
+    MPI_Recv(buf, previous_width, MPI_INT, LOWER_PROCESS(rank, size), 0, MPI_COMM_WORLD, NULL);
+	
+	//Synchronize all processes.
+	if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
+		printf("Error in MPI_Barrier\n");
+	}
 
     return buf;
+}
+
+void usage(int argc, char* argv[])
+{
+	UNUSED(argc);
+	
+	printf("This program generates an N many random integers array and rotates them in a circle. Every possible core of the system will be used.\n");
+	printf("It will loop as long as the first item of the first process at the initialization and first item of last process at that specific iteration will NOT match. ");
+	printf("So, maximum count of iterations will be NUM_CORES-1");
+	printf("Usage: %s N\n", argv[0]);
+	printf("Example: %s 10\n", argv[0]);
 }
 
 int
@@ -63,12 +70,8 @@ main (int argc, char** argv)
     {
         if (rank == 0)
         {
-            printf("Arguments error\n");
-            printf("This program generates an N many random integers array and rotates them in a circle. Every possible core of the system will be used.\n");
-            printf("It will loop as long as the first item of the first process at the initialization and first item of last process at that specific iteration will NOT match. ");
-            printf("So, maximum count of iterations will be NUM_CORES-1");
-            printf("Usage: %s N\n", argv[0]);
-            printf("Example: %s 10\n", argv[0]);
+            printf("Arguments error. Please specify all required arguments\n");
+			usage(argc, argv);
         }
     
         MPI_Finalize();
@@ -80,6 +83,18 @@ main (int argc, char** argv)
 
     //array length
     N = atoi(arg);
+	
+	if(N < size) {
+		if (rank == 0)
+        {
+            printf("Your system has %i cores. The data, which will be circled, must be larger than the number of cores (data>%i)\n", size, size);
+			usage(argc, argv);
+        }
+    
+        MPI_Finalize();
+        
+        return EXIT_FAILURE;
+	}
 
     double data_width = (double)N / (double)size;
     int data_start = data_width * rank;
@@ -88,6 +103,8 @@ main (int argc, char** argv)
 
     buf = init(data_realWidth, rank);
 
+	
+	//START UP OUTPUT
     if (rank == 0)
     {
         printf("\nBEFORE\n");
@@ -116,7 +133,14 @@ main (int argc, char** argv)
         MPI_Send(&data_realWidth, 1, MPI_INT, 0, 5, MPI_COMM_WORLD);
         MPI_Send(buf, data_realWidth, MPI_INT, 0, 1, MPI_COMM_WORLD);
     }
+	//Synchronize all processes.
+	//So the processes will continue, AFTER the main process has printed everything.
+	if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
+		printf("Error in MPI_Barrier\n");
+	}
 
+	
+	//Send (start) termination value to all
     if (rank == 0)
     {
         term_value = buf[0];
@@ -129,11 +153,22 @@ main (int argc, char** argv)
     {
         MPI_Recv(&term_value, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, NULL);
     }
+	//Synchronize all processes.
+	//So the processes will continue, AFTER the main process has informed everyone about the termination value
+	if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
+		printf("Error in MPI_Barrier\n");
+	}
 
-    int num_of_iterations = 0;
-
+	
+	//Circle loop
+    int previous_width;
     do
     {
+        MPI_Send(&data_realWidth, 1, MPI_INT, UPPER_PROCESS(rank, size), 7, MPI_COMM_WORLD);
+        MPI_Recv(&previous_width, 1, MPI_INT, LOWER_PROCESS(rank, size), 7, MPI_COMM_WORLD, NULL);
+
+        circle(buf, data_realWidth, previous_width, rank, size);
+		
         if (rank == size - 1)
         {
             compare_value = buf[0];
@@ -145,33 +180,19 @@ main (int argc, char** argv)
         else
         {
             MPI_Recv(&compare_value, 1, MPI_INT, size - 1, 3, MPI_COMM_WORLD, NULL);
-        }
-
-        int previous_width;
-
-        if(rank > 0)
-        {
-            MPI_Send(&data_realWidth, 1, MPI_INT, rank - 1, 7, MPI_COMM_WORLD);
-        }
-        else
-        {
-            MPI_Send(&data_realWidth, 1, MPI_INT, size - 1, 7, MPI_COMM_WORLD);
-        }
-
-        if(rank < size - 1)
-        {
-            MPI_Recv(&previous_width, 1, MPI_INT, rank + 1, 7, MPI_COMM_WORLD, NULL);
-        }
-        else
-        {
-            MPI_Recv(&previous_width, 1, MPI_INT, 0, 7, MPI_COMM_WORLD, NULL);
-        }
-
-        circle(buf, data_realWidth, previous_width, rank, size);
-
-        num_of_iterations++;
-    } while (term_value != compare_value && num_of_iterations < size - 1);
-
+		}
+		
+		//Synchronize all processes.
+		//So the processes will continue, AFTER all process know, if the termination will/has been reached
+		if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
+			printf("Error in MPI_Barrier\n");
+		}
+		
+    } while (term_value != compare_value);
+	
+	
+	
+	//END OUTPUT
     if (rank == 0)
     {
         printf("\nAFTER\n");
@@ -199,7 +220,13 @@ main (int argc, char** argv)
         MPI_Send(&data_realWidth, 1, MPI_INT, 0, 6, MPI_COMM_WORLD);
         MPI_Send(buf, data_realWidth, MPI_INT, 0, 4, MPI_COMM_WORLD);
     }
+	//Synchronize all processes.
+	//So the processes will continue, AFTER the main process has printed everything.
+	if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
+		printf("Error in MPI_Barrier\n");
+	}
 
+	//Cleanup
     free(buf);
 
     MPI_Finalize();
