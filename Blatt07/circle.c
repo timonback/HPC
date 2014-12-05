@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 #include <mpi.h>
 
@@ -12,7 +13,7 @@
 int*
 init (int N, int rank)
 {
-    int* buf = malloc(sizeof(int) * N);
+    int* buf = (int*)malloc(sizeof(int) * N);
 
     srand(time(NULL) + (15*rank) );
 
@@ -25,13 +26,26 @@ init (int N, int rank)
 }
 
 int*
-circle (int* buf, int step_width, int previous_width, int rank, int size)
+circle (int* buf, int rank, int size, int* data_my_width, int* data_rank_width)
 {
-    MPI_Send(buf, step_width, MPI_INT, UPPER_PROCESS(rank, size), 0, MPI_COMM_WORLD);
+	char str[100];
+	int a=0;
+	strcpy(str, "");
+	for(a=0; a < *data_my_width; a++) {
+		sprintf(str+strlen(str), "%d, ", buf[a]);
+	}
 
-    buf = realloc(buf, previous_width * sizeof(int));
+	printf("rank %d->%d: send %2d datasets: %s\n", rank, UPPER_PROCESS(rank, size), *data_my_width, str);
+    MPI_Send(buf, *data_my_width, MPI_INT, UPPER_PROCESS(rank, size), 0, MPI_COMM_WORLD);
     
-    MPI_Recv(buf, previous_width, MPI_INT, LOWER_PROCESS(rank, size), 0, MPI_COMM_WORLD, NULL);
+    MPI_Recv(buf, *data_rank_width, MPI_INT, LOWER_PROCESS(rank, size), 0, MPI_COMM_WORLD, NULL);
+	strcpy(str, "");
+	for(a=0; a < *data_rank_width; a++) {
+		sprintf(str+strlen(str), "%d, ", buf[a]);
+	}
+	printf("rank %d->%d: recv %2d datasets: %s\n", LOWER_PROCESS(rank, size), rank, *data_rank_width, str);
+	
+	(*data_my_width) = *data_rank_width;
 	
 	//Synchronize all processes.
 	if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
@@ -60,7 +74,6 @@ main (int argc, char** argv)
     int* buf;
     int rank, size;
     int term_value;
-    int compare_value;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -97,29 +110,41 @@ main (int argc, char** argv)
 	}
 
     double data_width = (double)N / (double)size;
-    int data_start = data_width * rank;
-    int data_end = data_width * (rank + 1);
-    int data_realWidth = data_end - data_start;
+    int data_my_start = data_width * rank;
+    int data_my_end = data_width * (rank + 1);
+    int data_my_width = data_my_end - data_my_start;
+	int data_previous_rank_width = 0;
+	if(rank == 0) {
+		data_previous_rank_width = N - (int)(data_width * (size - 1));
+	} else {
+		data_previous_rank_width = (double)data_my_start - (int)(data_width * (rank - 1));
+	}
+	printf("rank %d: bufSize: %d -> %d\n", rank, data_my_width, data_previous_rank_width);
 
-    buf = init(data_realWidth, rank);
-
+    buf = init(data_my_width+1, rank);
+	
+	//Save the termination value (just interesting for the last process)
+    if(rank == 0) {
+		MPI_Send(buf, 1, MPI_INT, size - 1, 8, MPI_COMM_WORLD);
+	} else if (rank == size - 1) {
+		MPI_Recv(&term_value, 1, MPI_INT, 0, 8, MPI_COMM_WORLD, NULL);
+	}
 	
 	//START UP OUTPUT
     if (rank == 0)
     {
         printf("\nBEFORE\n");
 
-        for (int i = 0; i < data_realWidth; i++)
+        for (int i = 0; i < data_my_width; i++)
         {
            printf ("rank %d: %d\n", rank, buf[i]);
         }
-
+		
+		int buf_temp[data_my_width+1];
         for (int i = 1; i < size; i++)
         {
             int rank_realWidth;
             MPI_Recv(&rank_realWidth, 1, MPI_INT, i, 5, MPI_COMM_WORLD, NULL);
-            int buf_temp[rank_realWidth];
-
             MPI_Recv(buf_temp, rank_realWidth, MPI_INT, i, 1, MPI_COMM_WORLD, NULL);
             
             for (int j = 0; j < rank_realWidth; j++)
@@ -130,8 +155,8 @@ main (int argc, char** argv)
     }
     else
     {
-        MPI_Send(&data_realWidth, 1, MPI_INT, 0, 5, MPI_COMM_WORLD);
-        MPI_Send(buf, data_realWidth, MPI_INT, 0, 1, MPI_COMM_WORLD);
+        MPI_Send(&data_my_width, 1, MPI_INT, 0, 5, MPI_COMM_WORLD);
+        MPI_Send(buf, data_my_width, MPI_INT, 0, 1, MPI_COMM_WORLD);
     }
 	//Synchronize all processes.
 	//So the processes will continue, AFTER the main process has printed everything.
@@ -140,19 +165,7 @@ main (int argc, char** argv)
 	}
 
 	
-	//Send (start) termination value to all
-    if (rank == 0)
-    {
-        term_value = buf[0];
-        for (int i = 1; i < size; i++)
-        {
-            MPI_Send(&term_value, 1, MPI_INT, i, 2, MPI_COMM_WORLD);
-        }
-    }
-    else
-    {
-        MPI_Recv(&term_value, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, NULL);
-    }
+	
 	//Synchronize all processes.
 	//So the processes will continue, AFTER the main process has informed everyone about the termination value
 	if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
@@ -161,25 +174,27 @@ main (int argc, char** argv)
 
 	
 	//Circle loop
-    int previous_width;
-    do
+	int circle_run_loop = 1;
+    while(circle_run_loop)
     {
-        MPI_Send(&data_realWidth, 1, MPI_INT, UPPER_PROCESS(rank, size), 7, MPI_COMM_WORLD);
-        MPI_Recv(&previous_width, 1, MPI_INT, LOWER_PROCESS(rank, size), 7, MPI_COMM_WORLD, NULL);
+        MPI_Send(&data_my_width, 1, MPI_INT, UPPER_PROCESS(rank, size), 7, MPI_COMM_WORLD);
+        MPI_Recv(&data_previous_rank_width, 1, MPI_INT, LOWER_PROCESS(rank, size), 7, MPI_COMM_WORLD, NULL);
 
-        circle(buf, data_realWidth, previous_width, rank, size);
+        buf = circle(buf, rank, size, &data_my_width, &data_previous_rank_width);
 		
         if (rank == size - 1)
         {
-            compare_value = buf[0];
+            circle_run_loop = (buf[0] != term_value);
+			printf("rank %d: continue loop: %d\n", rank, circle_run_loop);
             for (int i = 0; i < size - 1; i++)
             {
-                MPI_Send(&compare_value, 1, MPI_INT, i, 3, MPI_COMM_WORLD);
+                MPI_Send(&circle_run_loop, 1, MPI_INT, i, 3, MPI_COMM_WORLD);
             }
         }
         else
         {
-            MPI_Recv(&compare_value, 1, MPI_INT, size - 1, 3, MPI_COMM_WORLD, NULL);
+            MPI_Recv(&circle_run_loop, 1, MPI_INT, size - 1, 3, MPI_COMM_WORLD, NULL);
+			printf("rank %d: continue loop: %d\n", rank, circle_run_loop);
 		}
 		
 		//Synchronize all processes.
@@ -188,7 +203,7 @@ main (int argc, char** argv)
 			printf("Error in MPI_Barrier\n");
 		}
 		
-    } while (term_value != compare_value);
+    }
 	
 	
 	
@@ -197,18 +212,18 @@ main (int argc, char** argv)
     {
         printf("\nAFTER\n");
 
-        for (int i = 0; i < data_realWidth; i++)
+        for (int i = 0; i < data_my_width; i++)
         {
             printf ("rank %d: %d\n", rank, buf[i]);
         }
-
+		
+		int buf_temp[data_my_width+1];
         for (int i = 1; i < size; i++)
         {
             int rank_realWidth;
             MPI_Recv(&rank_realWidth, 1, MPI_INT, i, 6, MPI_COMM_WORLD, NULL);
-            int buf_temp[rank_realWidth];
-
             MPI_Recv(buf_temp, rank_realWidth, MPI_INT, i, 4, MPI_COMM_WORLD, NULL);
+			
             for (int j = 0; j < rank_realWidth; j++)
             {
                 printf ("rank %d: %d\n", i, buf_temp[j]);
@@ -217,9 +232,10 @@ main (int argc, char** argv)
     }
     else
     {
-        MPI_Send(&data_realWidth, 1, MPI_INT, 0, 6, MPI_COMM_WORLD);
-        MPI_Send(buf, data_realWidth, MPI_INT, 0, 4, MPI_COMM_WORLD);
+        MPI_Send(&data_my_width, 1, MPI_INT, 0, 6, MPI_COMM_WORLD);
+        MPI_Send(buf, data_my_width, MPI_INT, 0, 4, MPI_COMM_WORLD);
     }
+	
 	//Synchronize all processes.
 	//So the processes will continue, AFTER the main process has printed everything.
 	if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
