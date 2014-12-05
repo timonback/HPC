@@ -3,7 +3,7 @@
 
 #SBATCH --time=00:05:00
 #SBATCH -N1
-#SBATCH --ntasks-per-node=4
+#SBATCH --ntasks-per-node=14
 #SBATCH --output=output.out
 
-mpiexec ~/HPC/Blatt07/circle 9
+mpiexec ~/HPC/Blatt07/circle 31
