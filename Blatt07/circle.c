@@ -9,6 +9,11 @@
 
 #define UNUSED(arg) (void)arg;
 
+/*
+    MPI_Isend und MPI_Irecv würde im Gegensatz zu MPI_Send und MPI_Recv bei zu großen Datenmengen
+    einen Deadlock liefern.
+*/
+
 int*
 init (int N, int rank)
 {
