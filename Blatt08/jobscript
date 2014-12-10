@@ -2,8 +2,8 @@
 
 
 #SBATCH --time=00:01:00
-#SBATCH --nodes=1
+#SBATCH --nodes=2
 #SBATCH --ntasks-per-node=1
 #SBATCH --output=output.out
 
-srun ~/HPC/Blatt08/partdiff-par 1 2 128 1 2 128
+srun ~/HPC/Blatt08/partdiff-par 1 2 128 2 2 128
