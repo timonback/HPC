@@ -43,6 +43,9 @@ struct options
 	uint64_t termination;    /* termination condition                          */
 	uint64_t term_iteration; /* terminate if iteration number reached          */
 	double   term_precision; /* terminate if precision reached                 */
+
+	int 	 rank;
+	int 	 size;
 };
 
 /* *************************** */
