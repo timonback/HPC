@@ -26,6 +26,7 @@
 #include <math.h>
 #include <malloc.h>
 #include <sys/time.h>
+#include <mpi.h>
 
 #include "partdiff-par.h"
 
@@ -39,6 +40,9 @@ struct calculation_arguments
 	double    *M;             /* two matrices with real values                  */
 
 	uint64_t  N_rank;
+    
+    int row_start;
+    int row_end;
 };
 
 struct calculation_results
@@ -71,13 +75,81 @@ initVariables (struct calculation_arguments* arguments, struct calculation_resul
 	results->m = 0;
 	results->stat_iteration = 0;
 	results->stat_precision = 0;
-
-	//XXX
-	double N_width	= (double)(N-1) / options->size;
-	int N_start 	= N_width * rank;
-	int N_end		= N_width * (rank + 1);
-
-	options->N_rank = N_end - N_start; //+ 2 für mehr Speicher
+    
+    
+    int rest = (arguments->N + 1) % options->size;
+    
+    arguments->N_rank = (arguments->N + 1)/options->size;
+    
+    int rest_offset = 0;
+    for (int i = 0; i < options->rank; ++i)
+    {
+        if (i < rest)
+        {
+            rest_offset++;
+        }
+    }
+    // compute start rank + all offsets off the smaller ranks
+    arguments->row_start = options->rank * arguments->N_rank + rest_offset;
+    //offset of my rank
+    if(options->rank < rest) {
+        rest_offset++;
+    }
+    arguments->row_end = (options->rank + 1) * arguments->N_rank + rest_offset - 1;
+    //give every process his first and his last line, that he doesnt compute
+    //but needs from the other processes to compute his lines
+    if (options->rank > 0) {
+        arguments->row_start--;
+        arguments->N_rank++;
+    }
+    if (options->rank < (options->size - 1)) {
+        arguments->row_end++;
+        arguments->N_rank++;
+    }
+    if (options->rank < rest) {
+        arguments->N_rank++;
+    }
+    
+    /*int rest = 7 % options->size;
+    
+    int width = 7 / options->size;
+    
+    int rest_offset = 0;
+    for (int i = 0; i < options->rank; i++)
+    {
+        if (i < rest)
+        {
+            rest_offset++;
+        }
+    }
+    // compute start rank + all offsets off the smaller ranks
+    arguments->row_start = options->rank * width + rest_offset;
+    //offset of my rank
+    if(options->rank < rest) {
+        rest_offset++;
+    }
+    arguments->row_end = (options->rank + 1) * width + rest_offset - 1;
+    
+    arguments->row_start++;
+    arguments->row_end++;*/
+    //give every process his first and his last line, that he doesnt compute
+    //but needs from the other processes to compute his lines
+    /*if (options->rank > 0) {
+        arguments->row_start--;
+        arguments->N_rank++;
+    }
+    if (options->rank < (options->size - 1)) {
+        arguments->row_end++;
+        arguments->N_rank++;
+    }
+    if (options->rank < rest) {
+        arguments->N_rank++;
+    }*/
+    
+    if(options->rank == 0) {
+        printf("Interlines:\t%" PRIu64 "\n", options->interlines);
+        printf("N:\t\t\t%" PRIu64 "\n", arguments->N);
+    }
 }
 
 /* ************************************************************************ */
@@ -128,18 +200,17 @@ allocateMatrices (struct calculation_arguments* arguments)
 	uint64_t i, j;
 
 	uint64_t const N = arguments->N;
-	uint64_t const N_rank = arguments->N_rank;
 
-	arguments->M = allocateMemory(arguments->num_matrices * (N + 1) * (N_rank + 2) * sizeof(double));
+	arguments->M = allocateMemory(arguments->num_matrices * (N + 1) * (N + 1) * sizeof(double));
 	arguments->Matrix = allocateMemory(arguments->num_matrices * sizeof(double**));
 
 	for (i = 0; i < arguments->num_matrices; i++)
 	{
 		arguments->Matrix[i] = allocateMemory((N + 1) * sizeof(double*));
 
-		for (j = 0; j < N + 1; j++)
+		for (j = 0; j <= N; j++)
 		{
-			arguments->Matrix[i][j] = arguments->M + (i * (N + 1) * (N_rank + 2)) + (j * (N + 1));
+			arguments->Matrix[i][j] = arguments->M + (i * (N + 1) * (N + 1)) + (j * (N + 1));
 		}
 	}
 }
@@ -153,17 +224,16 @@ initMatrices (struct calculation_arguments* arguments, struct options const* opt
 {
 	uint64_t g, i, j;                                /*  local variables for loops   */
 
-	//uint64_t const N = arguments->N;
-	uint64_t const N = arguments->N_rank;
+	uint64_t const N = arguments->N;
 	double const h = arguments->h;
 	double*** Matrix = arguments->Matrix;
 
 	/* initialize matrix/matrices with zeros */
 	for (g = 0; g < arguments->num_matrices; g++)
 	{
-		for (i = 0; i < N + 1; i++)
+		for (i = 0; i <= N; i++)
 		{
-			for (j = 0; j < N_rank + 2; j++)
+			for (j = 0; j <= N; j++)
 			{
 				Matrix[g][i][j] = 0.0;
 			}
@@ -175,26 +245,26 @@ initMatrices (struct calculation_arguments* arguments, struct options const* opt
 	{
 		for (g = 0; g < arguments->num_matrices; g++)
 		{
-			for (i = 0; i < N + 1; i++)
+			for (i = 0; i <= N; i++)
 			{
 				Matrix[g][i][0] = 1.0 - (h * i);
-				Matrix[g][i][N_rank + 1] = h * i;
+				Matrix[g][i][N] = h * i;
 				Matrix[g][0][i] = 1.0 - (h * i);
 				Matrix[g][N][i] = h * i;
 			}
 
 			Matrix[g][N][0] = 0.0;
-			Matrix[g][0][N_rank + 1] = 0.0;
+			Matrix[g][0][N] = 0.0;
 		}
 	}
 }
 
 /* ************************************************************************ */
-/* calculate: solves the equation                                           */
+/* calculate: solves the equation for Gauss-Seidel                          */
 /* ************************************************************************ */
 static
 void
-calculate (struct calculation_arguments const* arguments, struct calculation_results *results, struct options const* options)
+calculateGaussSeidel (struct calculation_arguments const* arguments, struct calculation_results *results, struct options const* options)
 {
 	int i, j;                                   /* local variables for loops  */
 	int m1, m2;                                 /* used as indices for old and new matrices       */
@@ -292,9 +362,7 @@ calculate (struct calculation_arguments const* arguments, struct calculation_res
 }
 
 /* ************************************************************************ */
-/* calculate: solves the equation                                           */
-/*                                                                          */
-/* parallel Jacobi                                                          */
+/* calculate: solves the equation for Jacobi                                */
 /* ************************************************************************ */
 static
 void
@@ -485,8 +553,6 @@ DisplayMatrix (struct calculation_arguments* arguments, struct calculation_resul
 }
 
 /**
- * DisplayMatrix in partdiff-par
- *
  * rank and size are the MPI rank and size, respectively.
  * from and to denote the global(!) range of lines that this process is responsible for.
  *
@@ -566,6 +632,7 @@ MPI_DisplayMatrix (struct calculation_arguments* arguments, struct calculation_r
   fflush(stdout);
 }
 
+
 /* ************************************************************************ */
 /*  main                                                                    */
 /* ************************************************************************ */
@@ -575,28 +642,87 @@ main (int argc, char** argv)
 	struct options options;
 	struct calculation_arguments arguments;
 	struct calculation_results results;
+    
+    options.rank = -1;
+    options.size = -1;
+    
+	//Initialize MPI
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &(options.rank));
+    MPI_Comm_size(MPI_COMM_WORLD, &(options.size));
 
 	/* get parameters */
 	AskParams(&options, argc, argv);              /* ************************* */
+    
+    
+    
+    
+    /*double width;
+    int start, end;
+    if(options.size <= 7)
+    {
+        width = (double)7 / options.size;
+        start = width * options.rank + 1;
+        end = width * (options.rank+1);
+    }
+    else
+    {
+        width = 1.0;
+    }*/
+    
+    //w:7 rank 0 is responsible for 1-7
+    //w:3 rank 0 is responsible for 1-4, rank 1 for 5-7
+    //w:2 rank 0 is responsible for 1-3, rank 1 for 4-5, rank 2 for 6-7
+    //w:1 rank 0 is responsible for 1-2, rank 1 for 3-4, rank 2 for 5-6, rank 3 for 7
+    //w:1 rank 0 is responsible for 1-2, rank 1 for 3-4, rank 2 for 5  , rank 3 for 6, rank 4 for 7
+    //w:1 rank 0 is responsible for 1-2, rank 1 for 3  , rank 2 for 4  , rank 3 for 5, rank 4 for 6, rank 5 for 7
+    
+    //w: 1, size: 4
+    //rank 0: start = 1, end = 2
+    //rank 1: start = 3, end = 4
+    //rank 2: start = 5, end = 6
+    //rank 3: start = 7, end = 7
+    
+    int width, start;
+    width = 7 / options.size;
+    start = options.rank * width  +1;
+    if((7 % options.size) <= options.rank) {
+        width--;
+    }
+    
+    //arguments.row_start = start;
+    //arguments.row_end = start + width -1;
+    
+    
+    
 
-	//Initialize MPI
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &(options->rank));
-    MPI_Comm_size(MPI_COMM_WORLD, &(options->size));
+	initVariables(&arguments, &results, &options);             /* ******************************************* */
+    allocateMatrices(&arguments);                              /*  get and initialize variables and matrices  */
+	initMatrices(&arguments, &options);                        /* ******************************************* */
 
-	initVariables(&arguments, &results, &options);           /* ******************************************* */
+	gettimeofday(&start_time, NULL);                           /*  start timer  */
+    if (options.method == METH_JACOBI)
+    {
+        MPI_calculateJacobi(&arguments, &results, &options);   /*  solve the equation for Jacobi  */
+    }
+	else
+    {
+        calculateGaussSeidel(&arguments, &results, &options);  /*  solve the equation for Gauss-Seidel  */
+    }
+	gettimeofday(&comp_time, NULL);                            /*  stop timer  */
 
-	allocateMatrices(&arguments);        /*  get and initialize variables and matrices  */
-	initMatrices(&arguments, &options);            /* ******************************************* */
+    if(options.rank == 0) {
+        displayStatistics(&arguments, &results, &options);
+    }
+    
+    printf("rank %i: responsible for %i - %i\n", options.rank, arguments.row_start+1, arguments.row_end-1);
+    
+	//DisplayMatrix(&arguments, &results, &options);
+    MPI_DisplayMatrix (&arguments, &results, &options, options.rank, options.size, arguments.row_start+1, arguments.row_end-1);
 
-	gettimeofday(&start_time, NULL);                   /*  start timer         */
-	calculate(&arguments, &results, &options);                                      /*  solve the equation  */
-	gettimeofday(&comp_time, NULL);                   /*  stop timer          */
-
-	displayStatistics(&arguments, &results, &options);
-	DisplayMatrix(&arguments, &results, &options);
-
-	freeMatrices(&arguments);                                       /*  free memory     */
+	freeMatrices(&arguments);                                  /*  free memory  */
+    
+    MPI_Finalize();
 
 	return 0;
 }

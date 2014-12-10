@@ -161,119 +161,129 @@ AskParams (struct options* options, int argc, char** argv)
 {
 	int ret;
 
-	printf("============================================================\n");
-	printf("Program for calculation of partial differential equations.  \n");
-	printf("============================================================\n");
-	printf("(c) Dr. Thomas Ludwig, TU München.\n");
-	printf("    Thomas A. Zochler, TU München.\n");
-	printf("    Andreas C. Schmidt, TU München.\n");
-	printf("============================================================\n");
-	printf("\n");
+	if(options->rank <= 0) {
+		printf("============================================================\n");
+		printf("Program for calculation of partial differential equations.  \n");
+		printf("============================================================\n");
+		printf("(c) Dr. Thomas Ludwig, TU München.\n");
+		printf("    Thomas A. Zochler, TU München.\n");
+		printf("    Andreas C. Schmidt, TU München.\n");
+		printf("============================================================\n");
+		printf("\n");
+	}
 
 	if (argc < 2)
 	{
-		/* ----------------------------------------------- */
-		/* Get input: method, interlines, func, precision. */
-		/* ----------------------------------------------- */
-		do
-		{
-			printf("\n");
-			printf("Select number of threads:\n");
-			printf("Number> ");
-			fflush(stdout);
-			ret = scanf("%" SCNu64, &(options->number));
-			while (getchar() != '\n');
-		}
-		while (ret != 1 || !check_number(options));
-
-		do
-		{
-			printf("\n");
-			printf("Select calculationmethod:\n");
-			printf("  %1d: Gauss-Seidel.\n", METH_GAUSS_SEIDEL);
-			printf("  %1d: Jacobi.\n",       METH_JACOBI);
-			printf("method> ");
-			fflush(stdout);
-			ret = scanf("%" SCNu64, &(options->method));
-			while (getchar() != '\n');
-		}
-		while (ret != 1 || !check_method(options));
-
-		do
-		{
-			printf("\n");
-			printf("Matrixsize = Interlines*8+9\n");
-			printf("Interlines> ");
-			fflush(stdout);
-			ret = scanf("%" SCNu64, &(options->interlines));
-			while (getchar() != '\n');
-		}
-		while (ret != 1 || !check_interlines(options));
-
-		do
-		{
-			printf("\n");
-			printf("Select interferencefunction:\n");
-			printf(" %1d: f(x,y)=0.\n",                        FUNC_F0);
-			printf(" %1d: f(x,y)=2pi^2*sin(pi*x)sin(pi*y).\n", FUNC_FPISIN);
-			printf("interferencefunction> ");
-			fflush(stdout);
-			ret = scanf("%" SCNu64, &(options->inf_func));
-			while (getchar() != '\n');
-		}
-		while (ret != 1 || !check_inf_func(options));
-
-		do
-		{
-			printf("\n");
-			printf("Select termination:\n");
-			printf(" %1d: sufficient precision.\n",  TERM_PREC);
-			printf(" %1d: number of iterationes.\n", TERM_ITER);
-			printf("termination> ");
-			fflush(stdout);
-			ret = scanf("%" SCNu64, &(options->termination));
-			while (getchar() != '\n');
-		}
-		while (ret != 1 || !check_termination(options));
-
-		if (options->termination == TERM_PREC)
-		{
+		if(options->size == -1) {
+			/* ----------------------------------------------- */
+			/* Get input: method, interlines, func, precision. */
+			/* ----------------------------------------------- */
 			do
 			{
 				printf("\n");
-				printf("Select precision:\n");
-				printf("  Range: 1e-4 .. 1e-20.\n");
-				printf("precision> ");
+				printf("Select number of threads:\n");
+				printf("Number> ");
 				fflush(stdout);
-				ret = scanf("%lf", &(options->term_precision));
+				ret = scanf("%" SCNu64, &(options->number));
 				while (getchar() != '\n');
 			}
-			while (ret != 1 || !check_term_precision(options));
+			while (ret != 1 || !check_number(options));
 
-			options->term_iteration = MAX_ITERATION;
-		}
-		else if (options->termination == TERM_ITER)
-		{
 			do
 			{
 				printf("\n");
-				printf("Select number of iterations:\n");
-				printf("  Range: 1 .. %d.\n", MAX_ITERATION);
-				printf("Iterations> ");
+				printf("Select calculationmethod:\n");
+				printf("  %1d: Gauss-Seidel.\n", METH_GAUSS_SEIDEL);
+				printf("  %1d: Jacobi.\n",       METH_JACOBI);
+				printf("method> ");
 				fflush(stdout);
-				ret = scanf("%" SCNu64, &(options->term_iteration));
+				ret = scanf("%" SCNu64, &(options->method));
 				while (getchar() != '\n');
 			}
-			while (ret != 1 || !check_term_iteration(options));
+			while (ret != 1 || !check_method(options));
 
-			options->term_precision = 0;
+			do
+			{
+				printf("\n");
+				printf("Matrixsize = Interlines*8+9\n");
+				printf("Interlines> ");
+				fflush(stdout);
+				ret = scanf("%" SCNu64, &(options->interlines));
+				while (getchar() != '\n');
+			}
+			while (ret != 1 || !check_interlines(options));
+
+			do
+			{
+				printf("\n");
+				printf("Select interferencefunction:\n");
+				printf(" %1d: f(x,y)=0.\n",                        FUNC_F0);
+				printf(" %1d: f(x,y)=2pi^2*sin(pi*x)sin(pi*y).\n", FUNC_FPISIN);
+				printf("interferencefunction> ");
+				fflush(stdout);
+				ret = scanf("%" SCNu64, &(options->inf_func));
+				while (getchar() != '\n');
+			}
+			while (ret != 1 || !check_inf_func(options));
+
+			do
+			{
+				printf("\n");
+				printf("Select termination:\n");
+				printf(" %1d: sufficient precision.\n",  TERM_PREC);
+				printf(" %1d: number of iterationes.\n", TERM_ITER);
+				printf("termination> ");
+				fflush(stdout);
+				ret = scanf("%" SCNu64, &(options->termination));
+				while (getchar() != '\n');
+			}
+			while (ret != 1 || !check_termination(options));
+
+			if (options->termination == TERM_PREC)
+			{
+				do
+				{
+					printf("\n");
+					printf("Select precision:\n");
+					printf("  Range: 1e-4 .. 1e-20.\n");
+					printf("precision> ");
+					fflush(stdout);
+					ret = scanf("%lf", &(options->term_precision));
+					while (getchar() != '\n');
+				}
+				while (ret != 1 || !check_term_precision(options));
+
+				options->term_iteration = MAX_ITERATION;
+			}
+			else if (options->termination == TERM_ITER)
+			{
+				do
+				{
+					printf("\n");
+					printf("Select number of iterations:\n");
+					printf("  Range: 1 .. %d.\n", MAX_ITERATION);
+					printf("Iterations> ");
+					fflush(stdout);
+					ret = scanf("%" SCNu64, &(options->term_iteration));
+					while (getchar() != '\n');
+				}
+				while (ret != 1 || !check_term_iteration(options));
+
+				options->term_precision = 0;
+			}
+		} else {
+			if(options->rank == 0) {
+				printf("Interactive mode is not possible over multiple processes.\n");
+			}
 		}
 	}
 	else
 	{
 		if (argc < 7 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-?") == 0)
 		{
-			usage(argv[0]);
+			if(options->rank <= 0) {
+				usage(argv[0]);
+			}
 			exit(0);
 		}
 
@@ -281,7 +291,9 @@ AskParams (struct options* options, int argc, char** argv)
 
 		if (ret != 1 || !check_number(options))
 		{
-			usage(argv[0]);
+			if(options->rank <= 0) {
+				usage(argv[0]);
+			}
 			exit(1);
 		}
 
@@ -289,7 +301,9 @@ AskParams (struct options* options, int argc, char** argv)
 
 		if (ret != 1 || !check_method(options))
 		{
-			usage(argv[0]);
+			if(options->rank <= 0) {
+				usage(argv[0]);
+			}
 			exit(1);
 		}
 
@@ -297,7 +311,9 @@ AskParams (struct options* options, int argc, char** argv)
 
 		if (ret != 1 || !check_interlines(options))
 		{
-			usage(argv[0]);
+			if(options->rank <= 0) {
+				usage(argv[0]);
+			}
 			exit(1);
 		}
 
@@ -305,7 +321,9 @@ AskParams (struct options* options, int argc, char** argv)
 
 		if (ret != 1 || !check_inf_func(options))
 		{
-			usage(argv[0]);
+			if(options->rank <= 0) {
+				usage(argv[0]);
+			}
 			exit(1);
 		}
 
@@ -313,7 +331,9 @@ AskParams (struct options* options, int argc, char** argv)
 
 		if (ret != 1 || !check_termination(options))
 		{
-			usage(argv[0]);
+			if(options->rank <= 0) {
+				usage(argv[0]);
+			}
 			exit(1);
 		}
 
@@ -324,7 +344,9 @@ AskParams (struct options* options, int argc, char** argv)
 
 			if (ret != 1 || !check_term_precision(options))
 			{
-				usage(argv[0]);
+				if(options->rank <= 0) {
+					usage(argv[0]);
+				}
 				exit(1);
 			}
 		}
@@ -335,7 +357,9 @@ AskParams (struct options* options, int argc, char** argv)
 
 			if (ret != 1 || !check_term_iteration(options))
 			{
-				usage(argv[0]);
+				if(options->rank <= 0) {
+					usage(argv[0]);
+				}
 				exit(1);
 			}
 		}

@@ -2,8 +2,8 @@
 
 
 #SBATCH --time=00:01:00
-#SBATCH --nodes=2
-#SBATCH --ntasks-per-node=1
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=4
 #SBATCH --output=output.out
 
-mpiexec ~/HPC/Blatt08/partdiff-par 1 2 128 2 2 128
+mpiexec ~/HPC/Blatt08/partdiff-par 1 2 1 2 2 10
