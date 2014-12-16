@@ -494,7 +494,7 @@ MPI_calculateJacobi(struct calculation_arguments const* arguments, struct calcul
 
         /* check for stopping calculation, depending on termination method */
         if (options->termination == TERM_PREC) {
-            if (maxresiduum < options->term_precision) {
+            if (results->stat_precision < options->term_precision) {
                 term_iteration = 0;
             }
         } else if (options->termination == TERM_ITER) {
