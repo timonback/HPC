@@ -30,6 +30,8 @@
 
 #include "partdiff-par.h"
 
+#define INFO(rank, size, x) //printf("rank %2d of %2d (%3d): %s\n", rank+1, size, __LINE__, x)
+
 struct calculation_arguments {
     uint64_t N;             /* number of spaces between lines (lines=N+1) in total */
     uint64_t num_matrices;  /* number of matrices                                  */
@@ -111,6 +113,7 @@ initVariables(struct calculation_arguments* arguments, struct calculation_result
         arguments->N_rank++;
     }
 
+	return; //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     //to ensure, that Gauss-Seidel still computes correctly
     if (options->method == METH_GAUSS_SEIDEL) {
         arguments->N_rank = arguments->N - 1 - 1;
@@ -309,20 +312,29 @@ displayStatistics(struct calculation_arguments const* arguments, struct calculat
 /* ************************************************************************ */
 static
 void
-calculateGaussSeidel(struct calculation_arguments const* arguments, struct calculation_results *results, struct options const* options) {
-    int i, j; /* local variables for loops  */
+MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct calculation_results *results, struct options const* options) {
+    MPI_Request up[2], down[2]; /* local varible to coordinate MPI requests */
+	
+	int i, j; /* local variables for loops  */
     int m1, m2; /* used as indices for old and new matrices       */
     double star; /* four times center value minus 4 neigh.b values */
     double residuum; /* residuum of current iteration                  */
     double maxresiduum; /* maximum residuum value of a slave in iteration */
 
-    int const N = arguments->N;
+     /* get local copy of variable form the structure */
+    int const N = arguments->N; 
+    int const N_rank = arguments->N_rank;
     double const h = arguments->h;
 
     double pih = 0.0;
     double fpisin = 0.0;
 
     int term_iteration = options->term_iteration;
+	int iteration_first = 1;
+	int iteration_first_rank0 = 0; //TRUE, if it is rank0 with the first iteration
+	if(0 == options->rank) {
+		iteration_first_rank0 = 1;
+	}
 
     /* initialize m1 and m2 depending on algorithm */
     if (options->method == METH_JACOBI) {
@@ -337,19 +349,38 @@ calculateGaussSeidel(struct calculation_arguments const* arguments, struct calcu
         pih = PI * h;
         fpisin = 0.25 * TWO_PI_SQUARE * h * h;
     }
+	
+	INFO(options->rank, options->size, "MPI_calculateGaussSeidel START");
 
     while (term_iteration > 0) {
         double** Matrix_Out = arguments->Matrix[m1];
         double** Matrix_In = arguments->Matrix[m2];
 
         maxresiduum = 0;
-
+		
+		if(0 < options->rank) {
+			//Get the line from above.
+			INFO(options->rank, options->size, "RECV line from ABOVE v");
+			MPI_Irecv(Matrix_Out[0], N + 1, MPI_DOUBLE, options->rank - 1, 0, MPI_COMM_WORLD, &down[1]);
+			INFO(options->rank, options->size, "WAIT RECV line from ABOVE v");
+            MPI_Wait(&down[1], NULL);
+			INFO(options->rank, options->size, "WAIT DONE line from ABOVE v");
+		}
+		if (!iteration_first && options->rank < options->size-1) {
+			//Get the (last) line from below.
+			INFO(options->rank, options->size, "RECV line from BELOW ^");
+			MPI_Irecv(Matrix_Out[N_rank - 1], N + 1, MPI_DOUBLE, options->rank + 1, 0, MPI_COMM_WORLD, &up[1]);
+		}
+		
+		INFO(options->rank, options->size, "Calculate START");
+		
         /* over all rows */
-        for (i = 1; i < N; i++) {
+        for (i = 1; i < N_rank-1; i++) {
             double fpisin_i = 0.0;
 
             if (options->inf_func == FUNC_FPISIN) {
-                fpisin_i = fpisin * sin(pih * (double) i);
+                /* add offset */
+                fpisin_i = fpisin * sin(pih * (double) (i + arguments->row_start));
             }
 
             /* over all columns */
@@ -368,10 +399,51 @@ calculateGaussSeidel(struct calculation_arguments const* arguments, struct calcu
 
                 Matrix_Out[i][j] = star;
             }
+				
+			if(i==1) {
+				//First line was calculated.
+				if(0 < options->rank) {
+					//Now send fast to the previous rank
+					INFO(options->rank, options->size, "SEND line ABOVE ^");
+					MPI_Isend(Matrix_Out[1], N + 1, MPI_DOUBLE, options->rank - 1, 0, MPI_COMM_WORLD, &up[0]);
+				}
+			} else if(i == N_rank-2) {
+				//Before the last line gets calculated
+				if (!iteration_first && options->rank < options->size-1) {
+					//Ensure that the line from the rank below arrived.
+					INFO(options->rank, options->size, "WAIT RECV line from BELOW ^");
+					MPI_Wait(&up[1], NULL);
+					INFO(options->rank, options->size, "WAIT DONE line from BELOW ^");
+				}
+			}
+        }
+		
+		INFO(options->rank, options->size, "Calculate END");
+		
+		/* Communicate the line to the other ranks */
+        if (options->rank < options->size-1) {
+			if(!iteration_first) {
+				INFO(options->rank, options->size, "WAIT SEND line BELOW v DONE");
+				MPI_Wait(&down[0], NULL);
+				INFO(options->rank, options->size, "WAIT DONE line BELOW v DONE");
+			}
+			INFO(options->rank, options->size, "SEND line BELOW v");
+            //Send the last line to next rank
+			MPI_Isend(Matrix_Out[N_rank - 2], N + 1, MPI_DOUBLE, options->rank + 1, 0, MPI_COMM_WORLD, &down[0]);
+        }
+        if(0 < options->rank) {
+			//Ensure, that the data line was sent
+			INFO(options->rank, options->size, "WAIT SEND line ABOVE ^");
+            MPI_Wait(&up[0], NULL);
+			INFO(options->rank, options->size, "WAIT DONE line ABOVE ^");
         }
 
+		INFO(options->rank, options->size, "REDUCE");
+        /* Build the maxresiddum over all ranks */
+        MPI_Allreduce(&maxresiduum, &(results->stat_precision), 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+		INFO(options->rank, options->size, "REDUCE DONE");
+
         results->stat_iteration++;
-        results->stat_precision = maxresiduum;
 
         /* exchange m1 and m2 */
         i = m1;
@@ -380,12 +452,16 @@ calculateGaussSeidel(struct calculation_arguments const* arguments, struct calcu
 
         /* check for stopping calculation, depending on termination method */
         if (options->termination == TERM_PREC) {
-            if (maxresiduum < options->term_precision) {
+            if (results->stat_precision < options->term_precision) {
                 term_iteration = 0;
             }
         } else if (options->termination == TERM_ITER) {
             term_iteration--;
         }
+		
+		iteration_first = 0;
+		iteration_first_rank0 = 0;
+		MPI_Barrier(MPI_COMM_WORLD);
     }
 
     results->m = m2;
@@ -575,7 +651,6 @@ MPI_DisplayMatrix(struct calculation_arguments* arguments, struct calculation_re
         int line = y * (options->interlines + 1);
 
         if (rank == 0) {
-            //printf("%s: lines (%d), %d\n", __FUNCTION__, y, line);
             /* check whether this line belongs to rank 0 */
             if (line < from || line > to) {
                 /* use the tag to receive the lines in the correct order
@@ -587,7 +662,6 @@ MPI_DisplayMatrix(struct calculation_arguments* arguments, struct calculation_re
                 /* if the line belongs to this process, send it to rank 0
                  * (line - from + 1) is used to calculate the correct local address */
                 MPI_Send(Matrix[line - from + 1], elements, MPI_DOUBLE, 0, 42 + y, MPI_COMM_WORLD);
-                //printf("%s:Rank %d, Send %d\n", __FUNCTION__, rank, line-from+1);
             }
         }
 
@@ -644,7 +718,7 @@ main(int argc, char** argv) {
         MPI_calculateJacobi(&arguments, &results, &options); 
     } else {
         /*  solve the equation for Gauss-Seidel  */
-        calculateGaussSeidel(&arguments, &results, &options); 
+        MPI_calculateGaussSeidel(&arguments, &results, &options); 
     }
     gettimeofday(&comp_time, NULL); /*  stop timer  */
 
@@ -655,11 +729,7 @@ main(int argc, char** argv) {
     }
 
     /* print the results */
-    if (options.method == METH_JACOBI) {
-        MPI_DisplayMatrix(&arguments, &results, &options, options.rank, options.size, arguments.row_start + 1, arguments.row_end - 1);
-    } else {
-        DisplayMatrix(&arguments, &results, &options);
-    }
+    MPI_DisplayMatrix(&arguments, &results, &options, options.rank, options.size, arguments.row_start + 1, arguments.row_end - 1);
 
     //Clean up MPI
     MPI_Finalize();
