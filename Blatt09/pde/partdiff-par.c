@@ -32,7 +32,17 @@
 
 #define INFO(rank, size, x) printf("rank %2d of %2d (%3d): %s\n", rank+1, size, __LINE__, x)
 #include <string.h>
-#define INFO_DATA(rank, size, data, datasize) do{char data_[size*5]; for(int _i_=0; _i_<datasize; _i_++) sprintf(data_, ", %3g", data[_i_]); INFO(rank, size, data_); }while(0)
+#define INFO_DATA(rank, size, data, datasize) \
+        do { \
+            char data_[datasize*8 + 1 + 10000]; \
+            for(int _i_=0; _i_<datasize; _i_++) { \
+                sprintf(data_ + (8*_i_), ", %1.4g", data[_i_]); \
+            } \
+            INFO(rank, size, data_); \
+        } while(0)
+
+#define MPI_TAG_UP   333
+#define MPI_TAG_DOWN 666
 
 struct calculation_arguments {
     uint64_t N;             /* number of spaces between lines (lines=N+1) in total */
@@ -354,15 +364,16 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
 		if(0 < options->rank) {
 			//Get the line from above.
 			INFO(options->rank, options->size, "RECV line from ABOVE v");
-			MPI_Irecv(Matrix_Out[0], N + 1, MPI_DOUBLE, options->rank - 1, 0, MPI_COMM_WORLD, &down[1]);
+			MPI_Irecv(Matrix_Out[0], N + 1, MPI_DOUBLE, options->rank - 1, MPI_TAG_DOWN, MPI_COMM_WORLD, &down[1]);
 			INFO(options->rank, options->size, "WAIT RECV line from ABOVE v");
             MPI_Wait(&down[1], NULL);
 			INFO(options->rank, options->size, "WAIT DONE line from ABOVE v");
+            INFO_DATA(options->rank, options->size, Matrix_Out[0] , N + 1);
 		}
 		if (!iteration_first && options->rank < options->size-1) {
 			//Get the (last) line from below.
 			INFO(options->rank, options->size, "RECV line from BELOW ^");
-			MPI_Irecv(Matrix_Out[N_rank - 1], N + 1, MPI_DOUBLE, options->rank + 1, 0, MPI_COMM_WORLD, &up[1]);
+			MPI_Irecv(Matrix_Out[N_rank - 1], N + 1, MPI_DOUBLE, options->rank + 1, MPI_TAG_UP, MPI_COMM_WORLD, &up[1]);
 		}
 		
 		INFO(options->rank, options->size, "Calculate START");
@@ -398,7 +409,7 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
 				if(0 < options->rank) {
 					//Now send fast to the previous rank (last line of the previous rank)
 					INFO(options->rank, options->size, "SEND line ABOVE ^");
-					MPI_Isend(Matrix_Out[1], N + 1, MPI_DOUBLE, options->rank - 1, 0, MPI_COMM_WORLD, &up[0]);
+					MPI_Isend(Matrix_Out[1], N + 1, MPI_DOUBLE, options->rank - 1, MPI_TAG_UP, MPI_COMM_WORLD, &up[0]);
 					INFO_DATA(options->rank, options->size, Matrix_Out[1] , N + 1);
 				}
 			} else if(i == N_rank-2) {
@@ -408,6 +419,7 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
 					INFO(options->rank, options->size, "WAIT RECV line from BELOW ^");
 					MPI_Wait(&up[1], NULL);
 					INFO(options->rank, options->size, "WAIT DONE line from BELOW ^");
+                    INFO_DATA(options->rank, options->size, Matrix_Out[N_rank - 1] , N + 1);
 				}
 			}
         }
@@ -423,7 +435,7 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
 			}
 			INFO(options->rank, options->size, "SEND line BELOW v");
             //Send the last line to next rank
-			MPI_Isend(Matrix_Out[N_rank - 2], N + 1, MPI_DOUBLE, options->rank + 1, 0, MPI_COMM_WORLD, &down[0]);
+			MPI_Isend(Matrix_Out[N_rank - 2], N + 1, MPI_DOUBLE, options->rank + 1, MPI_TAG_DOWN, MPI_COMM_WORLD, &down[0]);
 			INFO_DATA(options->rank, options->size, Matrix_Out[N_rank - 2] , N + 1);
         }
         if(0 < options->rank) {
