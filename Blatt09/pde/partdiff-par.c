@@ -30,19 +30,29 @@
 
 #include "partdiff-par.h"
 
+/*
+TODOS:
+ - remove debug statements
+ - make termination after precision work
+ - check the expensive calculation function (program works for the f(x,y)=0, but not with sinus over several ranks
+*/
+
 #define INFO(rank, size, x) printf("rank %2d of %2d (%3d): %s\n", rank+1, size, __LINE__, x)
 #include <string.h>
 #define INFO_DATA(rank, size, data, datasize) \
         do { \
-            char data_[datasize*8 + 1 + 10000]; \
+            char* str = (char*)malloc(( (datasize+1) * 8 + 1) * sizeof(char)); \
             for(int _i_=0; _i_<datasize; _i_++) { \
-                sprintf(data_ + (8*_i_), ", %1.4g", data[_i_]); \
+                sprintf(str + (8*_i_), ", %1.4f", data[_i_]); \
             } \
-            INFO(rank, size, data_); \
+            INFO(rank, size, str); \
+			free(str); \
         } while(0)
 
 #define MPI_TAG_UP   333
 #define MPI_TAG_DOWN 666
+#define MPI_TAG_ABORT 777
+#define MPI_TAG_PRECISION 999
 
 struct calculation_arguments {
     uint64_t N;             /* number of spaces between lines (lines=N+1) in total */
@@ -364,17 +374,46 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
 		if(0 < options->rank) {
 			//Get the line from above.
 			INFO(options->rank, options->size, "RECV line from ABOVE v");
-			MPI_Irecv(Matrix_Out[0], N + 1, MPI_DOUBLE, options->rank - 1, MPI_TAG_DOWN, MPI_COMM_WORLD, &down[1]);
+			MPI_Recv(Matrix_Out[0], N + 1, MPI_DOUBLE, options->rank - 1, MPI_TAG_DOWN, MPI_COMM_WORLD, NULL);
+			//MPI_Irecv(Matrix_Out[0], N + 1, MPI_DOUBLE, options->rank - 1, MPI_TAG_DOWN, MPI_COMM_WORLD, &down[1]);
 			INFO(options->rank, options->size, "WAIT RECV line from ABOVE v");
-            MPI_Wait(&down[1], NULL);
+            //MPI_Wait(&down[1], NULL);
 			INFO(options->rank, options->size, "WAIT DONE line from ABOVE v");
             INFO_DATA(options->rank, options->size, Matrix_Out[0] , N + 1);
 		}
 		if (!iteration_first && options->rank < options->size-1) {
 			//Get the (last) line from below.
 			INFO(options->rank, options->size, "RECV line from BELOW ^");
-			MPI_Irecv(Matrix_Out[N_rank - 1], N + 1, MPI_DOUBLE, options->rank + 1, MPI_TAG_UP, MPI_COMM_WORLD, &up[1]);
+			//MPI_Irecv(Matrix_Out[N_rank - 1], N + 1, MPI_DOUBLE, options->rank + 1, MPI_TAG_UP, MPI_COMM_WORLD, &up[1]);
+			MPI_Recv(Matrix_Out[N_rank - 1], N + 1, MPI_DOUBLE, options->rank + 1, MPI_TAG_UP, MPI_COMM_WORLD, NULL);
 		}
+		
+		//Not working. Produces an infinity loop, or something like that...
+		/*if (options->termination == TERM_PREC) {
+			//recieve max_residuum(s) of previous rank
+			if(0 < options->rank) {
+				MPI_Recv(&residuum, 1, MPI_INT, options->rank-1, MPI_TAG_PRECISION, MPI_COMM_WORLD, NULL);
+				maxresiduum = (residuum < maxresiduum) ? maxresiduum : residuum;
+			}
+			
+			//Have we received a abort signal?
+			if (options->rank < options->size-1) {
+				residuum = 0;
+				MPI_Iprobe(MPI_ANY_SOURCE, MPI_TAG_ABORT, MPI_COMM_WORLD, (void*)&residuum, NULL);
+				if(residuum) {
+					//Yes, we have received one!
+					term_iteration = 0;
+					
+					//Inform the next rank about it!
+					if (options->rank < options->size-1 -1) {
+						MPI_Send(&term_iteration, 1, MPI_INT, options->rank+1, MPI_TAG_ABORT, MPI_COMM_WORLD);
+					}
+					
+					//Stop the loop. We are done.
+					break;
+				}
+			}
+		}*/
 		
 		INFO(options->rank, options->size, "Calculate START");
 		
@@ -409,7 +448,8 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
 				if(0 < options->rank) {
 					//Now send fast to the previous rank (last line of the previous rank)
 					INFO(options->rank, options->size, "SEND line ABOVE ^");
-					MPI_Isend(Matrix_Out[1], N + 1, MPI_DOUBLE, options->rank - 1, MPI_TAG_UP, MPI_COMM_WORLD, &up[0]);
+					//MPI_Isend(Matrix_Out[1], N + 1, MPI_DOUBLE, options->rank - 1, MPI_TAG_UP, MPI_COMM_WORLD, &up[0]);
+					MPI_Send(Matrix_Out[1], N + 1, MPI_DOUBLE, options->rank - 1, MPI_TAG_UP, MPI_COMM_WORLD);
 					INFO_DATA(options->rank, options->size, Matrix_Out[1] , N + 1);
 				}
 			} else if(i == N_rank-2) {
@@ -417,7 +457,7 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
 				if (!iteration_first && options->rank < options->size-1) {
 					//Ensure that the line from the rank below arrived.
 					INFO(options->rank, options->size, "WAIT RECV line from BELOW ^");
-					MPI_Wait(&up[1], NULL);
+					//MPI_Wait(&up[1], NULL);
 					INFO(options->rank, options->size, "WAIT DONE line from BELOW ^");
                     INFO_DATA(options->rank, options->size, Matrix_Out[N_rank - 1] , N + 1);
 				}
@@ -430,22 +470,24 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
         if (options->rank < options->size-1) {
 			if(!iteration_first) {
 				INFO(options->rank, options->size, "WAIT SEND line BELOW v DONE");
-				MPI_Wait(&down[0], NULL);
+				//MPI_Wait(&down[0], NULL);
 				INFO(options->rank, options->size, "WAIT DONE line BELOW v DONE");
 			}
 			INFO(options->rank, options->size, "SEND line BELOW v");
             //Send the last line to next rank
-			MPI_Isend(Matrix_Out[N_rank - 2], N + 1, MPI_DOUBLE, options->rank + 1, MPI_TAG_DOWN, MPI_COMM_WORLD, &down[0]);
+			//MPI_Isend(Matrix_Out[N_rank - 2], N + 1, MPI_DOUBLE, options->rank + 1, MPI_TAG_DOWN, MPI_COMM_WORLD, &down[0]);
+			MPI_Send(Matrix_Out[N_rank - 2], N + 1, MPI_DOUBLE, options->rank + 1, MPI_TAG_DOWN, MPI_COMM_WORLD);
 			INFO_DATA(options->rank, options->size, Matrix_Out[N_rank - 2] , N + 1);
         }
         if(0 < options->rank) {
 			//Ensure, that the data line was sent
 			INFO(options->rank, options->size, "WAIT SEND line ABOVE ^");
-            MPI_Wait(&up[0], NULL);
+            //MPI_Wait(&up[0], NULL);
 			INFO(options->rank, options->size, "WAIT DONE line ABOVE ^");
         }
 		
         results->stat_iteration++;
+		results->stat_precision = maxresiduum;
 
         /* exchange m1 and m2 */
         i = m1;
@@ -453,20 +495,24 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
         m2 = i;
 
         /* check for stopping calculation, depending on termination method */
-        if (options->termination == TERM_PREC) {
-			//TODO:
-			//http://mpitutorial.com/dynamic-receiving-with-mpi-probe-and-mpi-status/
-			//All broadcast to the last process
-			//If termination after precision, then check the lastest (MPI_Get_count) messages
-			//If termination = TRUE, then broadcast the termination signal to all
-			//All processes need to check if they recieved the termination signal
+        /*if (options->termination == TERM_PREC) {
 			
-            if (results->stat_precision < options->term_precision) {
-                term_iteration = 0;
-            }
+			//send max_residuum (so far) to next rank
+			if (options->rank < options->size-1) {
+				MPI_Send(&maxresiduum, 1, MPI_INT, options->rank+1, MPI_TAG_PRECISION, MPI_COMM_WORLD);
+			}
+			
+			if (options->rank == options->size-1) {
+				if (maxresiduum < options->term_precision) {
+					//Send the abort signal to first rank.
+					MPI_Send(&term_iteration, 1, MPI_INT, 0, MPI_TAG_ABORT, MPI_COMM_WORLD);
+					
+					term_iteration = 0;
+				}
+			}
         } else if (options->termination == TERM_ITER) {
             term_iteration--;
-        }
+        }*/
 		
 		iteration_first = 0;
     }
@@ -569,7 +615,7 @@ MPI_calculateJacobi(struct calculation_arguments const* arguments, struct calcul
             MPI_Wait(&up[1], NULL);
         }
 
-        /* Build the maxresiddum over all ranks */
+        /* Build the maxresiduum over all ranks */
         MPI_Allreduce(&maxresiduum, &(results->stat_precision), 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
         
         results->stat_iteration++;
