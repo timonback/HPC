@@ -29,25 +29,45 @@
 #include <mpi.h>
 
 #include "partdiff-par.h"
+/*
+INFO:
+
+Isend and Irecv aren't used so far, because for easier debugging.
+We tried first to use Isend and Irecv, but the code wasn't working that time.
+
+All "INFO..."-macros are used for debugging only.
+If DEBUG is not defined, these macros are doing nothing.
+
+Notice ourself:
+Try to improve the code and performance by using those.
+*/
 
 /*
 TODOS:
- - remove debug statements
- - make termination after precision work
  - check the expensive calculation function (program works for the f(x,y)=0, but not with sinus over several ranks
 */
 
-#define INFO(rank, size, x) printf("rank %2d of %2d (%3d): %s\n", rank+1, size, __LINE__, x)
-#include <string.h>
-#define INFO_DATA(rank, size, data, datasize) \
-        do { \
-            char* str = (char*)malloc(( (datasize+1) * 8 + 1) * sizeof(char)); \
-            for(int _i_=0; _i_<datasize; _i_++) { \
-                sprintf(str + (8*_i_), ", %1.4f", data[_i_]); \
-            } \
-            INFO(rank, size, str); \
-			free(str); \
-        } while(0)
+#define UNUSED(x) (void)x;
+
+//#define DEBUG
+#ifdef DEBUG
+    #define INFO(rank, size, x) printf("rank %2d of %2d (%3d): %s\n", rank+1, size, __LINE__, x)
+    #define INFO_DOUBLE(rank, size, number, x, y) printf("rank %2d of %2d (%3d): %f, coordinates: (%d|%d)\n", rank+1, size, __LINE__, number, x, y)
+    #include <string.h>
+    #define INFO_DATA(rank, size, data, datasize) \
+            do { \
+                char* str = (char*)malloc(( (datasize+1) * 8 + 1) * sizeof(char)); \
+                for(int _i_=0; _i_<datasize; _i_++) { \
+                    sprintf(str + (8*_i_), ", %1.4f", data[_i_]); \
+                } \
+                INFO(rank, size, str); \
+    			free(str); \
+            } while(0)
+#else
+    #define INFO(rank, size, x) UNUSED(x)
+    #define INFO_DOUBLE(rank, size, number, x, y) UNUSED(x)
+    #define INFO_DATA(rank, size, data, datasize) UNUSED(data)
+#endif
 
 #define MPI_TAG_UP   333
 #define MPI_TAG_DOWN 666
@@ -335,7 +355,7 @@ displayStatistics(struct calculation_arguments const* arguments, struct calculat
 static
 void
 MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct calculation_results *results, struct options const* options) {
-    MPI_Request up[2], down[2]; /* local varible to coordinate MPI requests */
+    //MPI_Request up[2], down[2]; /* local varible to coordinate MPI requests */
 	
 	int i, j; /* local variables for loops  */
     int m1, m2; /* used as indices for old and new matrices       */
@@ -388,9 +408,8 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
 			MPI_Recv(Matrix_Out[N_rank - 1], N + 1, MPI_DOUBLE, options->rank + 1, MPI_TAG_UP, MPI_COMM_WORLD, NULL);
 		}
 		
-		//Not working. Produces an infinity loop, or something like that...
-		/*if (options->termination == TERM_PREC) {
-			//recieve max_residuum(s) of previous rank
+		if (options->termination == TERM_PREC) {
+			//receive max_residuum(s) of previous rank
 			if(0 < options->rank) {
 				MPI_Recv(&residuum, 1, MPI_INT, options->rank-1, MPI_TAG_PRECISION, MPI_COMM_WORLD, NULL);
 				maxresiduum = (residuum < maxresiduum) ? maxresiduum : residuum;
@@ -399,7 +418,8 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
 			//Have we received a abort signal?
 			if (options->rank < options->size-1) {
 				residuum = 0;
-				MPI_Iprobe(MPI_ANY_SOURCE, MPI_TAG_ABORT, MPI_COMM_WORLD, (void*)&residuum, NULL);
+				//MPI_Iprobe(MPI_ANY_SOURCE, MPI_TAG_ABORT, MPI_COMM_WORLD, (void*)&residuum, NULL);
+                MPI_Recv(&residuum, 1, MPI_INT, MPI_ANY_SOURCE, MPI_TAG_ABORT, MPI_COMM_WORLD, NULL);
 				if(residuum) {
 					//Yes, we have received one!
 					term_iteration = 0;
@@ -413,7 +433,7 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
 					break;
 				}
 			}
-		}*/
+		}
 		
 		INFO(options->rank, options->size, "Calculate START");
 		
@@ -423,15 +443,18 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
 
             if (options->inf_func == FUNC_FPISIN) {
                 /* add offset */
-                fpisin_i = fpisin * sin(pih * (double) (i + arguments->row_start));
+                fpisin_i = fpisin * sin(pih * (double) (i + arguments->row_start)); //1 = i
+                //INFO_DATA(rank, size, &fpisin_i, 1);
             }
 
             /* over all columns */
             for (j = 1; j < N; j++) {
+                /* Matrix access is still in the i-index, no offset */
                 star = 0.25 * (Matrix_In[i - 1][j] + Matrix_In[i][j - 1] + Matrix_In[i][j + 1] + Matrix_In[i + 1][j]);
-
+                
                 if (options->inf_func == FUNC_FPISIN) {
                     star += fpisin_i * sin(pih * (double) j);
+                    //INFO_DOUBLE(options->rank, options->size, fpisin_i * sin(pih * (double) j), i, j);
                 }
 
                 if (options->termination == TERM_PREC || term_iteration == 1) {
@@ -487,7 +510,6 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
         }
 		
         results->stat_iteration++;
-		results->stat_precision = maxresiduum;
 
         /* exchange m1 and m2 */
         i = m1;
@@ -495,9 +517,9 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
         m2 = i;
 
         /* check for stopping calculation, depending on termination method */
-        /*if (options->termination == TERM_PREC) {
+        if (options->termination == TERM_PREC) {
 			
-			//send max_residuum (so far) to next rank
+			//send maxresiduum (so far) to next rank
 			if (options->rank < options->size-1) {
 				MPI_Send(&maxresiduum, 1, MPI_INT, options->rank+1, MPI_TAG_PRECISION, MPI_COMM_WORLD);
 			}
@@ -505,14 +527,15 @@ MPI_calculateGaussSeidel(struct calculation_arguments const* arguments, struct c
 			if (options->rank == options->size-1) {
 				if (maxresiduum < options->term_precision) {
 					//Send the abort signal to first rank.
+                    term_iteration = 0;
 					MPI_Send(&term_iteration, 1, MPI_INT, 0, MPI_TAG_ABORT, MPI_COMM_WORLD);
-					
-					term_iteration = 0;
-				}
+				} else {
+                    MPI_Send(&term_iteration, 1, MPI_INT, 0, MPI_TAG_ABORT, MPI_COMM_WORLD);
+                }
 			}
         } else if (options->termination == TERM_ITER) {
             term_iteration--;
-        }*/
+        }
 		
 		iteration_first = 0;
     }
