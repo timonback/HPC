@@ -584,7 +584,7 @@ MPI_calculateJacobi(struct calculation_arguments const* arguments, struct calcul
 
     if (options->inf_func == FUNC_FPISIN) {
         pih = PI * h;
-        fpisin = 0.25 * TWO_PI_SQUARE * h * h;
+        fpisin = TWO_PI_SQUARE * h * h;
     }
 
     while (term_iteration > 0) {
@@ -607,19 +607,18 @@ MPI_calculateJacobi(struct calculation_arguments const* arguments, struct calcul
             /* over all columns */
             for (j = 1; j < N; j++) {
                 /* Matrix access is still in the i-index, no offset */
-                star = 0.25 * (Matrix_In[i - 1][j] + Matrix_In[i][j - 1] + Matrix_In[i][j + 1] + Matrix_In[i + 1][j]);
-
+				
+                star = Matrix_In[i][j] - (0.25 * (Matrix_In[i - 1][j] + Matrix_In[i][j - 1] + Matrix_In[i][j + 1] + Matrix_In[i + 1][j]));
+                
+				residuum = -star;
                 if (options->inf_func == FUNC_FPISIN) {
-                    star += fpisin_i * sin(pih * (double) j);
+					residuum = (fpisin_i * sin((double)(j) * pih)) - star;
                 }
 
-                if (options->termination == TERM_PREC || term_iteration == 1) {
-                    residuum = Matrix_In[i][j] - star;
-                    residuum = (residuum < 0) ? -residuum : residuum;
-                    maxresiduum = (residuum < maxresiduum) ? maxresiduum : residuum;
-                }
-
-                Matrix_Out[i][j] = star;
+                Matrix_Out[i][j] = Matrix_In[i][j] + residuum;
+				
+				residuum = (residuum < 0) ? -residuum : residuum;
+				maxresiduum = (residuum < maxresiduum) ? maxresiduum : residuum;
             }
         }
 
