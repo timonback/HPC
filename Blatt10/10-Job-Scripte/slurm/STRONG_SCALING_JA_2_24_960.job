@@ -1,0 +1,9 @@
+#!/bin/sh
+
+#SBATCH --time=02:00:00
+#SBATCH -N 2 --tasks-per-node=12
+#SBATCH --error=STRONG_SCALING_JA_2_24_960.err --output=STRONG_SCALING_JA_2_24_960.out
+
+mpiexec -n 24 ./partdiff-par 1 2 960 2 2 1000
+mpiexec -n 24 ./partdiff-par 1 2 960 2 2 1000
+mpiexec -n 24 ./partdiff-par 1 2 960 2 2 1000
