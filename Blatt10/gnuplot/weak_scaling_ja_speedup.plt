@@ -1,6 +1,6 @@
-set title "Weak scaling (Speedup): Total runtime of partdiff with the jacobi algorithm"
-set xlabel "Amount of processes"
-set ylabel "total Speedup"
+set title "Weak scaling: Speed-up of partdiff-par with the jacobi algorithm"
+set xlabel "Number of processes"
+set ylabel "total speed-up"
 set grid xtics lt 0 lw 1 lc rgb "#bbbbbb"
 set grid ytics lt 0 lw 1 lc rgb "#bbbbbb"
 unset key
