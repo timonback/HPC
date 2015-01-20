@@ -1,0 +1,10 @@
+#!/bin/bash
+
+
+#SBATCH --time=00:01:00
+#SBATCH --nodes=4
+#SBATCH --ntasks-per-node=2
+#SBATCH --output=output.out
+
+#Parameter: num method(gs/j) lines func(0/pi) prec/iter value
+mpiexec -n 5 ~/HPC/Blatt11/partdiff-par 1 2 512 2 2 20
